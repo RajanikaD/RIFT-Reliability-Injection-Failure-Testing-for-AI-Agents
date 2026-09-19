@@ -1,4 +1,33 @@
-"""Framework-agnostic RIFT core package.
+"""Framework-agnostic RIFT domain models and contracts."""
 
-Domain behavior is intentionally deferred to a later milestone.
-"""
+from rift_core.domain import (
+    ExecutionContext,
+    ExperimentRunResult,
+    ExperimentSpec,
+    FaultPhase,
+    FaultRule,
+    FaultType,
+    InvariantResult,
+    InvariantStatus,
+    RunMode,
+    RunOutcome,
+    ScenarioSpec,
+    StateSnapshot,
+    ToolInvocation,
+)
+
+__all__ = [
+    "ExecutionContext",
+    "ExperimentRunResult",
+    "ExperimentSpec",
+    "FaultPhase",
+    "FaultRule",
+    "FaultType",
+    "InvariantResult",
+    "InvariantStatus",
+    "RunMode",
+    "RunOutcome",
+    "ScenarioSpec",
+    "StateSnapshot",
+    "ToolInvocation",
+]

@@ -21,12 +21,13 @@ This repository contains the initial engineering blueprint and a minimal Python 
 The scaffold provides:
 
 - Python packaging for the API and future framework-agnostic core.
+- Framework-agnostic experiment, scenario, fault-rule, and run-evidence models.
 - Environment-backed API configuration.
 - `GET /health` in FastAPI.
 - pytest and Ruff configuration.
 - A minimal API Dockerfile.
 
-Fault injection, experiment orchestration, agent adapters, sandbox behavior, invariants, persistence, and web functionality are not implemented.
+Fault execution, experiment orchestration, agent adapters, sandbox behavior, invariant evaluation, persistence, and web functionality are not implemented.
 
 A later local demo will simulate an ecommerce support request:
 

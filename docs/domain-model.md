@@ -1,87 +1,80 @@
 # Domain model
 
-This document defines the initial conceptual model. It is implementation-neutral: names describe domain responsibilities and do not prescribe database tables or Pydantic class layouts.
+This document defines the initial conceptual model and its V0 Pydantic representation in `rift_core`. The models are framework-neutral, strict, and frozen after validation. They do not prescribe database tables or infrastructure behavior.
 
 ## Relationships
 
 ```text
-Experiment
-├── references one Scenario
+ExperimentSpec
+├── contains one ScenarioSpec
 ├── contains zero or more FaultRules
-└── produces ExperimentRuns
-    ├── records ToolInvocations
-    ├── produces one or more StateSnapshots
-    └── produces one RunResult
-        └── contains InvariantResults for the Scenario's Invariants
+└── is executed using an ExecutionContext
+    └── produces an ExperimentRunResult
+        ├── records ToolInvocations
+        ├── may contain a StateSnapshot
+        └── contains InvariantResults for the ScenarioSpec's declared invariants
 
-AgentAdapter executes the Scenario for an ExperimentRun.
+Future AgentAdapter and experiment-runner components will consume these models.
 ```
 
-## `Experiment`
+## `ExperimentSpec`
 
-An immutable, versioned definition of a reliability test. It binds a `Scenario` to run configuration, a deterministic seed, an agent-adapter configuration reference, and a set of `FaultRule` definitions.
+An immutable, versioned definition of a reliability test. It binds a `ScenarioSpec` to a deterministic seed and an ordered set of `FaultRule` definitions.
 
-An experiment describes intent; it is not an execution record. Executing it creates a baseline `ExperimentRun` and at least one faulted `ExperimentRun` according to the runner's supported plan.
+An experiment specification describes intent; it is not an execution record. A future runner will create separate baseline and faulted execution contexts from it.
 
 Conceptual fields:
 
-- Identity and definition version.
-- Human-readable name and optional description.
-- Scenario reference and version.
-- Agent adapter kind and non-secret configuration reference.
+- Experiment identity, name, and optional description.
+- Embedded versioned scenario specification.
 - Random seed.
 - Ordered fault rules.
-- Run limits such as an execution deadline or maximum tool invocations.
 
-## `ExperimentRun`
+Duplicate fault-rule identities and duplicate `(tool_name, invocation_number)` selectors are rejected. Every rule must reference a tool declared by the scenario. Rejecting selector conflicts keeps matching unambiguous until a later fault-engine decision defines composition or priority.
 
-One execution attempt of an experiment in either `BASELINE` or `FAULTED` mode. It records the exact inputs required to interpret and, where possible, reproduce that attempt.
+## `ExecutionContext`
+
+The stable identifiers and deterministic inputs for one execution attempt.
 
 Conceptual fields:
 
-- Run identity and experiment definition reference.
-- Mode: baseline or faulted.
-- Seed and resolved fault plan.
-- Scenario and adapter versions.
-- Lifecycle status and timestamps.
-- Tool-invocation trace.
-- Snapshot references.
-- Terminal `RunResult`.
-- Failure information when orchestration or execution cannot complete.
+- Experiment identity.
+- Run identity.
+- Random seed.
+- `RunMode`: `BASELINE` or `FAULTED`.
 
-A retry of an interrupted run is a new run attempt unless later durable-execution semantics explicitly define resumption.
+Fault rules never match in baseline mode. A retry of an interrupted run will be a new context unless later durable-execution semantics explicitly define resumption.
 
-## `Scenario`
+## `ScenarioSpec`
 
 A versioned test case describing the task given to an agent and the controlled environment in which it operates. It defines initial sandbox state, available tools, and required outcome invariants.
 
 Conceptual fields:
 
-- Identity and version.
+- Scenario identity, name, and positive integer version.
 - Task input presented to the agent.
-- Initial-state fixture or fixture reference.
-- Tool contract references.
-- Ordered invariant definitions.
-- Optional scenario-specific execution constraints.
+- JSON-compatible initial state.
+- Ordered, unique tool names.
+- Ordered, unique invariant identities.
 
 The eventual ecommerce scenario will contain order, payment, inventory, and notification state for `ORD-1001`. It is not implemented in this blueprint.
 
 ## `FaultRule`
 
-A declarative rule that selects tool invocations and specifies a fault to inject. Rules are ordered and evaluated deterministically.
+A declarative rule that selects one numbered occurrence of a named tool and specifies a fault to inject. Rules are ordered and evaluated deterministically.
 
 Conceptual fields:
 
-- Rule identity.
-- Enabled state.
-- Match criteria, such as tool name and invocation occurrence.
+- Rule identity, tool name, and one-based invocation number.
 - `FaultType`.
-- Type-specific parameters, such as latency duration or malformed payload shape.
-- Optional probability, evaluated with the run-scoped seeded generator.
-- Application limit, such as once per run.
-- Explicit priority or order.
+- Derived `FaultPhase`.
+- Type-specific parameters: positive latency duration, optional error message, or malformed replacement response.
 
-Conflict behavior when multiple rules match must be defined by the fault engine before implementation; it must never depend on unordered collection iteration.
+`matches` returns true only when tool name and invocation number match in `FAULTED` mode. There is no probability field or random selection in this version. Duplicate selectors are rejected by `ExperimentSpec`; future rule composition requires an explicit architectural decision.
+
+## `FaultPhase`
+
+`BEFORE_CALL` behavior occurs before the underlying operation is invoked. `AFTER_CALL` behavior occurs only after the underlying operation has been invoked. Phase is derived from fault type and contradictory configurations are rejected.
 
 ## `FaultType`
 
@@ -92,13 +85,11 @@ A closed initial vocabulary identifying fault semantics. Planned values are:
 | `LATENCY` | Delay the caller-visible completion of an invocation. |
 | `RATE_LIMIT` | Reject the invocation with rate-limit semantics, such as HTTP 429. |
 | `EXCEPTION` | Raise a configured dependency or tool error. |
-| `TIMEOUT_BEFORE_EXECUTION` | Report a timeout without executing the underlying operation. |
+| `TIMEOUT_BEFORE_CALL` | Report a timeout without executing the underlying operation. |
 | `TIMEOUT_AFTER_COMMIT` | Execute and commit the operation, then report a timeout to the caller. |
 | `MALFORMED_RESPONSE` | Execute according to configuration but return a syntactically or semantically malformed response. |
-| `SCHEMA_DRIFT` | Return a response conforming to a deliberately changed contract. |
-| `DUPLICATE_OPERATION` | Cause the underlying operation to be attempted more than once. |
 
-These values define the target vocabulary, not a promise that all are implemented in V0.
+`EXCEPTION`, `RATE_LIMIT`, and `TIMEOUT_BEFORE_CALL` prevent the underlying call. `LATENCY` delays before allowing the call. `MALFORMED_RESPONSE` occurs after a call. `TIMEOUT_AFTER_COMMIT` guarantees that the operation executed and committed before the caller-visible error. These are model semantics only; no executor is implemented yet. Schema drift and duplicate-operation injection remain future fault types.
 
 ## `ToolInvocation`
 
@@ -106,16 +97,13 @@ An append-only record of one attempted tool call as observed at the fault-inject
 
 Conceptual fields:
 
-- Invocation identity, run identity, and stable run-local sequence number.
-- Tool name and contract version.
-- Sanitized input or input digest.
-- Start and finish times.
-- Rules evaluated and selected fault, if any.
-- Underlying execution and commit status when observable.
-- Sanitized caller-visible output or error.
-- Parent correlation data supplied by the adapter.
+- Invocation identity, run identity, tool name, and positive invocation number.
+- JSON-compatible arguments.
+- Applied fault-rule identity, type, and phase, if any.
+- Explicit underlying execution and commit flags.
+- Caller-visible response or error.
 
-The record distinguishes the underlying operation's outcome from what the agent observed. This distinction is necessary for ambiguous failures such as timeout after commit.
+The record distinguishes the underlying operation's outcome from what the caller observed. Validation enforces the two timeout cases: before-call timeouts cannot execute or commit, while after-commit timeouts require both execution and commit plus a caller-visible error.
 
 ## `AgentAdapter`
 
@@ -174,24 +162,22 @@ Conceptual fields:
 
 `ERROR` means the invariant could not be evaluated and must not be treated as a pass.
 
-## `RunResult`
+## `ExperimentRunResult`
 
-The terminal, framework-neutral assessment of one `ExperimentRun`.
+The terminal, framework-neutral assessment of one execution attempt.
 
 Conceptual fields:
 
-- Run identity and terminal status.
-- Agent execution outcome.
+- `ExecutionContext` and aggregate `RunOutcome`.
+- Optional diagnostic agent response.
 - Collection of `InvariantResult` values.
-- Aggregate outcome: `PASS`, `FAIL`, `ERROR`, or `INCONCLUSIVE`.
-- Snapshot and invocation-trace references.
-- Execution summary and timing metadata.
+- Optional state snapshot and ordered tool-invocation evidence.
 
-An agent completing without an exception does not imply `PASS`; required invariants determine the outcome. `INCONCLUSIVE` covers cases where a valid assessment is unavailable without incorrectly converting uncertainty to success.
+Invocation and snapshot run identities must match the execution context. An agent completing without an exception does not imply `PASS`; required invariants determine the outcome. `INCONCLUSIVE` covers cases where a valid assessment is unavailable without incorrectly converting uncertainty to success.
 
 ## Baseline comparison
 
-Baseline-versus-fault comparison is produced by the experiment runner from two `RunResult` values plus their evidence. It is deliberately not included as a separate initial domain concept in the requested model.
+Baseline-versus-fault comparison will be produced by the experiment runner from two `ExperimentRunResult` values plus their evidence. It is deliberately not included as a separate initial domain concept.
 
 The comparison should report:
 
@@ -205,8 +191,7 @@ If the baseline does not satisfy its required invariants, the faulted run can st
 
 ## Identity, versioning, and immutability
 
-- Definitions (`Experiment`, `Scenario`, and `Invariant`) are versioned so historical runs retain their meaning.
-- Execution evidence (`ToolInvocation`, `StateSnapshot`, `InvariantResult`, and `RunResult`) is append-only after a run is finalized.
+- Definitions (`ExperimentSpec`, `ScenarioSpec`, and future invariant specifications) are versioned so historical runs retain their meaning.
+- Execution evidence (`ToolInvocation`, `StateSnapshot`, `InvariantResult`, and `ExperimentRunResult`) is immutable after validation.
 - References use stable opaque identifiers rather than names.
 - Serialization formats and database schemas are implementation concerns and may evolve without changing these concepts.
-
