@@ -43,6 +43,15 @@ def make_exception_rule(**overrides: object) -> FaultRule:
     return FaultRule.model_validate(values)
 
 
+def invocation_timing() -> dict[str, object]:
+    timestamp = datetime(2026, 9, 18, tzinfo=UTC)
+    return {
+        "started_at": timestamp,
+        "finished_at": timestamp,
+        "duration_ms": 0.0,
+    }
+
+
 def test_valid_domain_model_construction() -> None:
     scenario = make_scenario()
     rule = make_exception_rule()
@@ -249,6 +258,7 @@ def test_timeout_before_call_prevents_underlying_operation() -> None:
         invocation_number=1,
         fault_rule_id=rule.fault_rule_id,
         fault_type=rule.fault_type,
+        **invocation_timing(),
         underlying_operation_executed=False,
         underlying_operation_committed=False,
         caller_error="request timed out",
@@ -271,6 +281,7 @@ def test_timeout_before_call_rejects_executed_operation() -> None:
             invocation_number=1,
             fault_rule_id="before-timeout",
             fault_type=FaultType.TIMEOUT_BEFORE_CALL,
+            **invocation_timing(),
             underlying_operation_executed=True,
             underlying_operation_committed=False,
             caller_error="request timed out",
@@ -292,8 +303,10 @@ def test_timeout_after_commit_hides_committed_success() -> None:
         invocation_number=1,
         fault_rule_id=rule.fault_rule_id,
         fault_type=rule.fault_type,
+        **invocation_timing(),
         underlying_operation_executed=True,
         underlying_operation_committed=True,
+        underlying_result={"status": "success"},
         caller_error="response timed out",
     )
 
@@ -316,6 +329,7 @@ def test_timeout_after_commit_rejects_uncommitted_operation() -> None:
             invocation_number=1,
             fault_rule_id="after-timeout",
             fault_type=FaultType.TIMEOUT_AFTER_COMMIT,
+            **invocation_timing(),
             underlying_operation_executed=True,
             underlying_operation_committed=False,
             caller_error="response timed out",

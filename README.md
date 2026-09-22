@@ -22,12 +22,13 @@ The scaffold provides:
 
 - Python packaging for the API and future framework-agnostic core.
 - Framework-agnostic experiment, scenario, fault-rule, and run-evidence models.
+- Deterministic direct and fault-injecting async tool executors.
 - Environment-backed API configuration.
 - `GET /health` in FastAPI.
 - pytest and Ruff configuration.
 - A minimal API Dockerfile.
 
-Fault execution, experiment orchestration, agent adapters, sandbox behavior, invariant evaluation, persistence, and web functionality are not implemented.
+Experiment orchestration, agent adapters, sandbox behavior, invariant evaluation, persistence, and web functionality are not implemented.
 
 A later local demo will simulate an ecommerce support request:
 
@@ -92,6 +93,7 @@ See [the architecture](docs/architecture.md), [domain model](docs/domain-model.m
 - [Product definition](docs/product.md)
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
+- [Fault execution](docs/fault-execution.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture decision records](docs/adr/)
 

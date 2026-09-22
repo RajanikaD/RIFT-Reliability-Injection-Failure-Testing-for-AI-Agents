@@ -19,6 +19,7 @@ from pydantic import (
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 NonNegativeInt = Annotated[int, Field(ge=0)]
+NonNegativeFloat = Annotated[float, Field(ge=0)]
 
 
 class RunMode(StrEnum):
@@ -230,18 +231,35 @@ class ToolInvocation(RiftDomainModel):
     tool_name: NonEmptyStr
     invocation_number: PositiveInt
     arguments: dict[str, JsonValue] = Field(default_factory=dict)
+    started_at: AwareDatetime
+    finished_at: AwareDatetime
+    duration_ms: NonNegativeFloat
     fault_rule_id: NonEmptyStr | None = None
     fault_type: FaultType | None = None
     fault_phase: FaultPhase | None = None
     underlying_operation_executed: bool
-    underlying_operation_committed: bool
+    underlying_operation_committed: bool | None
+    underlying_result: JsonValue | None = None
+    underlying_error: NonEmptyStr | None = None
     caller_response: JsonValue | None = None
     caller_error: NonEmptyStr | None = None
 
     @model_validator(mode="after")
     def validate_outcomes(self) -> Self:
+        if self.finished_at < self.started_at:
+            raise ValueError("finished_at cannot precede started_at")
+
         if self.underlying_operation_committed and not self.underlying_operation_executed:
             raise ValueError("a committed operation must have executed")
+
+        if not self.underlying_operation_executed:
+            if self.underlying_operation_committed is not False:
+                raise ValueError("a skipped operation has a known uncommitted outcome")
+            if self.underlying_result is not None or self.underlying_error is not None:
+                raise ValueError("a skipped operation cannot have an underlying outcome")
+
+        if self.underlying_result is not None and self.underlying_error is not None:
+            raise ValueError("an invocation cannot have both an underlying result and error")
 
         if self.caller_response is not None and self.caller_error is not None:
             raise ValueError("an invocation cannot expose both a response and an error")
@@ -261,7 +279,10 @@ class ToolInvocation(RiftDomainModel):
             raise ValueError(f"{self.fault_type.value} must use the {expected_phase.value} phase")
 
         if self.fault_type is FaultType.TIMEOUT_BEFORE_CALL:
-            if self.underlying_operation_executed or self.underlying_operation_committed:
+            if (
+                self.underlying_operation_executed
+                or self.underlying_operation_committed is not False
+            ):
                 raise ValueError("timeout-before-call cannot execute or commit the operation")
             if self.caller_error is None:
                 raise ValueError("timeout-before-call requires a caller-visible error")
@@ -271,6 +292,11 @@ class ToolInvocation(RiftDomainModel):
                 raise ValueError("timeout-after-commit requires an executed, committed operation")
             if self.caller_error is None:
                 raise ValueError("timeout-after-commit requires a caller-visible error")
+
+        if self.underlying_operation_executed is not self.fault_type.underlying_operation_executes:
+            raise ValueError(
+                f"{self.fault_type.value} has contradictory underlying execution evidence"
+            )
 
         return self
 

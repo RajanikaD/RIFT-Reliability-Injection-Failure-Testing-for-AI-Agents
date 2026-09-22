@@ -26,6 +26,7 @@ dev = [
 packages = [
     "apps/api/src/rift_api",
     "packages/rift_core/src/rift_core",
+    "packages/rift_fault_engine/src/rift_fault_engine",
 ]
 
 [tool.pytest.ini_options]
@@ -35,7 +36,12 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-src = ["apps/api/src", "packages/rift_core/src", "tests"]
+src = [
+    "apps/api/src",
+    "packages/rift_core/src",
+    "packages/rift_fault_engine/src",
+    "tests",
+]
 
 [tool.ruff.lint]
 select = [
@@ -45,4 +51,3 @@ select = [
     "I",
     "UP",
 ]
-

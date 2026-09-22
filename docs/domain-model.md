@@ -99,11 +99,12 @@ Conceptual fields:
 
 - Invocation identity, run identity, tool name, and positive invocation number.
 - JSON-compatible arguments.
+- Timezone-aware start and finish times plus monotonic duration in milliseconds.
 - Applied fault-rule identity, type, and phase, if any.
-- Explicit underlying execution and commit flags.
-- Caller-visible response or error.
+- Explicit underlying execution and commit state; commit is `None` when unknown.
+- Underlying result or error, separately from the caller-visible response or error.
 
-The record distinguishes the underlying operation's outcome from what the caller observed. Validation enforces the two timeout cases: before-call timeouts cannot execute or commit, while after-commit timeouts require both execution and commit plus a caller-visible error.
+The record distinguishes the underlying operation's outcome from what the caller observed. Validation enforces the two timeout cases: before-call timeouts cannot execute or commit, while after-commit timeouts require both execution and commit plus a caller-visible error. Records produced by the fault executor are available through a typed success envelope, injected exceptions, and an invocation recorder.
 
 ## `AgentAdapter`
 

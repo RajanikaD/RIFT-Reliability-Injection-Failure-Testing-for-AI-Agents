@@ -16,7 +16,7 @@ RIFT models these conditions as distinct fault types:
 - `TIMEOUT_BEFORE_CALL` occurs in `FaultPhase.BEFORE_CALL`. The underlying operation does not execute and therefore cannot commit.
 - `TIMEOUT_AFTER_COMMIT` occurs in `FaultPhase.AFTER_CALL`. The underlying operation executes and commits, but the caller observes a timeout or error instead of the successful result.
 
-`FaultRule` exposes these semantics declaratively. `ToolInvocation` records the caller-visible outcome separately from whether the underlying operation executed and committed. Model validation rejects invocation evidence that contradicts the selected timeout semantics.
+`FaultRule` exposes these semantics declaratively. `ToolInvocation` records the caller-visible outcome separately from whether the underlying operation executed and committed. Commit status may be `None` when it is not knowable, but the two injected timeout types require known evidence: false before call and true after commit. Model validation rejects invocation evidence that contradicts the selected timeout semantics.
 
 The domain model does not inject either behavior. A later fault executor must implement the declared semantics while preserving this evidence boundary.
 
@@ -32,7 +32,7 @@ The domain model does not inject either behavior. A later fault executor must im
 ### Negative
 
 - Tool integrations must expose enough information to distinguish execution and commit when that information is knowable.
-- Some real dependencies cannot prove commit status immediately; those cases may require an explicit unknown state in a future model revision.
+- Some real dependencies cannot prove commit status immediately; those cases retain an explicit unknown commit state and cannot be labeled `TIMEOUT_AFTER_COMMIT` without stronger evidence.
 - Fault executors must control both underlying execution and the caller-visible response.
 
 ## Alternatives considered
@@ -48,4 +48,3 @@ Rejected because the same exception can occur before execution, during execution
 ### Treat after-commit timeout as a duplicate-operation fault
 
 Rejected because the timeout creates ambiguity; a duplicate occurs only if a caller or retry mechanism acts on that ambiguity. Keeping them separate enables RIFT to test recovery and reconciliation behavior rather than assuming a retry.
-
