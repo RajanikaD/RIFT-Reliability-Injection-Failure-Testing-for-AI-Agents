@@ -23,18 +23,19 @@ The scaffold provides:
 - Python packaging for the API and future framework-agnostic core.
 - Framework-agnostic experiment, scenario, fault-rule, and run-evidence models.
 - Deterministic direct and fault-injecting async tool executors.
+- A deterministic synthetic ecommerce sandbox with explicit idempotency behavior.
 - Environment-backed API configuration.
 - `GET /health` in FastAPI.
 - pytest and Ruff configuration.
 - A minimal API Dockerfile.
 
-Experiment orchestration, agent adapters, sandbox behavior, invariant evaluation, persistence, and web functionality are not implemented.
+Experiment orchestration, agent adapters, invariant evaluation, persistence, and web functionality are not implemented.
 
-A later local demo will simulate an ecommerce support request:
+The sandbox supports the state and operations needed by a later orchestrated ecommerce demo:
 
 > Cancel order ORD-1001, refund the customer, restore inventory, and send confirmation.
 
-The demo will compare a fault-free baseline with faulted executions and independently verify the resulting system state. The demo itself is not implemented.
+The future orchestrated demo will compare a fault-free baseline with faulted executions and independently verify the resulting system state. The agent, orchestration, and invariant evaluation are not implemented.
 
 ## Backend setup
 
@@ -94,6 +95,7 @@ See [the architecture](docs/architecture.md), [domain model](docs/domain-model.m
 - [Architecture](docs/architecture.md)
 - [Domain model](docs/domain-model.md)
 - [Fault execution](docs/fault-execution.md)
+- [Commerce sandbox](docs/commerce-sandbox.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture decision records](docs/adr/)
 

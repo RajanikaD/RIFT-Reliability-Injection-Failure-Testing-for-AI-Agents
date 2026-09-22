@@ -25,6 +25,7 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = [
     "apps/api/src/rift_api",
+    "examples/commerce_demo/src/commerce_demo",
     "packages/rift_core/src/rift_core",
     "packages/rift_fault_engine/src/rift_fault_engine",
 ]
@@ -38,6 +39,7 @@ target-version = "py311"
 line-length = 100
 src = [
     "apps/api/src",
+    "examples/commerce_demo/src",
     "packages/rift_core/src",
     "packages/rift_fault_engine/src",
     "tests",
