@@ -57,14 +57,17 @@ def invocation_evidence(invocations: Sequence[ToolInvocation]) -> dict[str, Json
     """Build the trace evidence that invariants may opt in to via their evaluation context.
 
     It describes what actually executed, never what the caller saw: an operation whose response
-    was lost still ``succeeded``. ``completion_position`` is the 1-based order in which the
-    executor finished recording invocations.
+    was lost still ``succeeded``. ``completion_position`` is the 1-based order in which
+    invocations finished; ``sequence_number`` the order in which they started; and A
+    happened-before B iff A's ``completion_position`` <= B's ``completed_before_start``.
     """
 
     return {
         "invocations": [
             {
                 "completion_position": position,
+                "sequence_number": item.sequence_number,
+                "completed_before_start": item.completed_before_start,
                 "tool": item.tool_name,
                 "invocation_number": item.invocation_number,
                 "executed": item.underlying_operation_executed,
@@ -92,6 +95,8 @@ def fingerprint(
             {
                 "tool": item.tool_name,
                 "number": item.invocation_number,
+                "sequence": item.sequence_number,
+                "completed_before_start": item.completed_before_start,
                 "arguments": item.arguments,
                 "fault_rule_id": item.fault_rule_id,
                 "executed": item.underlying_operation_executed,

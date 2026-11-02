@@ -149,7 +149,7 @@ def test_reconciliation_misattributes_a_concurrent_writers_change() -> None:
 
 def test_concurrent_invocations_are_numbered_by_start_and_recorded_by_completion() -> None:
     """Invocation numbers follow call start order; the recorder (and report trace) follows
-    completion order. LIMITATION: there is no run-global start sequence field yet (audit D5)."""
+    completion order. Since Milestone 2 (D2) the run-global start order is recorded explicitly."""
 
     recorder = InMemoryInvocationRecorder()
     executor = FaultInjectingToolExecutor(
@@ -182,6 +182,7 @@ def test_concurrent_invocations_are_numbered_by_start_and_recorded_by_completion
     results = asyncio.run(scenario())
     assert results == ["faulted", 0]  # the rule hit the call that *started* first
     assert [i.invocation_number for i in recorder.records] == [2, 1]
+    assert [i.sequence_number for i in recorder.records] == [2, 1]
 
 
 # --- Ambiguous commits -------------------------------------------------------------------------
