@@ -26,6 +26,7 @@ from rift_experiment_runner.evaluation import (
     classify,
     compare,
     derive_outcome,
+    diff_states,
     fingerprint,
     fired_rule_ids,
 )
@@ -136,10 +137,14 @@ class ExperimentRunner(Generic[StateT]):
         environment.reset()
         before = environment.snapshot()
         initial_state = environment.snapshot_json(before)
-        declared_state = binding.spec.initial_state
+        # Verify against the experiment's own declaration, which _validate has already tied to
+        # the binding. The declaration must come from an independent source (see ADR-006).
+        declared_state = experiment.scenario.initial_state
         if declared_state and declared_state != initial_state:
+            drift = [difference.path for difference in diff_states(declared_state, initial_state)]
             raise ExperimentConfigurationError(
-                f"{binding.spec.scenario_id} reset state differs from its declared initial_state"
+                f"{experiment.scenario.scenario_id} reset state differs from its declared "
+                f"initial_state at: {', '.join(drift)}"
             )
 
         recorder = InMemoryInvocationRecorder()
@@ -232,3 +237,13 @@ class ExperimentRunner(Generic[StateT]):
         missing = [name for name in declared.tool_names if name not in handlers]
         if missing:
             raise ExperimentConfigurationError(f"scenario declares unbound tools: {missing}")
+        if declared != bound:
+            fields = [
+                name
+                for name in type(declared).model_fields
+                if getattr(declared, name) != getattr(bound, name)
+            ]
+            raise ExperimentConfigurationError(
+                f"experiment declares {declared.scenario_id} v{declared.version} with different "
+                f"content from the bound scenario; differing fields: {', '.join(fields)}"
+            )
