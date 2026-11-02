@@ -19,6 +19,7 @@ from rift_core import (
     InvariantStatus,
     RunOutcome,
     ToolInvocation,
+    derive_run_outcome,
 )
 from rift_experiment_runner.models import (
     Comparison,
@@ -31,16 +32,9 @@ from rift_experiment_runner.models import (
 
 
 def derive_outcome(results: Sequence[InvariantResult]) -> RunOutcome:
-    """The only place a run outcome is decided. Agent output is deliberately not an input."""
+    """Kept for compatibility; the rule itself lives in ``rift_core.derive_run_outcome``."""
 
-    if not results:
-        return RunOutcome.INCONCLUSIVE
-    statuses = {result.status for result in results}
-    if InvariantStatus.ERROR in statuses:
-        return RunOutcome.ERROR
-    if InvariantStatus.FAIL in statuses:
-        return RunOutcome.FAIL
-    return RunOutcome.PASS
+    return derive_run_outcome(results)
 
 
 def classify(outcome: RunOutcome, agent: AgentRunOutput) -> OutcomeClassification:
