@@ -29,9 +29,18 @@ def _invocations(evidence: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def happened_before(first: Mapping[str, Any], second: Mapping[str, Any]) -> bool:
-    """Whether ``first`` finished before ``second`` began, according to the trace."""
+    """Whether ``first`` had *finished* before ``second`` was *requested*.
 
-    return int(first["completion_position"]) < int(second["completion_position"])
+    Completion order is not enough: two overlapping calls can complete in either order while
+    neither waited for the other. ``completed_before_start`` counts the run's completed calls at
+    the moment ``second`` started, so ``first`` finished earlier iff its completion position is
+    within that count.
+    """
+
+    started_after = second.get("completed_before_start")
+    if started_after is None:
+        raise MissingTraceEvidenceError("trace evidence lacks completed_before_start")
+    return int(first["completion_position"]) <= int(started_after)
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +67,7 @@ class RefundAfterCancellationInvariant:
             message=(
                 "Every executed refund followed a successful cancellation."
                 if passed
-                else "A refund executed before the order was cancelled."
+                else "A refund was requested before the order's cancellation had completed."
             ),
             expected=0,
             observed=len(early),
@@ -66,6 +75,8 @@ class RefundAfterCancellationInvariant:
                 "refund_invocations": [_ref(i) for i in refunds],
                 "cancel_invocations": [_ref(i) for i in cancels],
                 "refunds_before_cancellation": [_ref(i) for i in early],
+                "cancel_completed_at": [i["completion_position"] for i in cancels],
+                "refund_started_after_completions": [i["completed_before_start"] for i in early],
             },
         )
 

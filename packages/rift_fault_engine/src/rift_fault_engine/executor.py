@@ -76,6 +76,10 @@ class _BaseToolExecutor:
         self._clock = clock or SystemClock()
         self._recorder = recorder or InMemoryInvocationRecorder()
         self._invocation_counts: dict[tuple[str, str, str], int] = {}
+        # Run-global start order and happens-before evidence, keyed by (experiment, run).
+        self._started: dict[tuple[str, str], int] = {}
+        self._completed: dict[tuple[str, str], int] = {}
+        self._start_evidence: dict[tuple[str, str, str, int], tuple[int, int]] = {}
 
     @property
     def invocations(self) -> tuple[ToolInvocation, ...]:
@@ -102,6 +106,14 @@ class _BaseToolExecutor:
         )
         invocation_number = self._invocation_counts.get(key, 0) + 1
         self._invocation_counts[key] = invocation_number
+
+        run_key = (execution_context.experiment_id, execution_context.run_id)
+        sequence_number = self._started.get(run_key, 0) + 1
+        self._started[run_key] = sequence_number
+        self._start_evidence[(*key, invocation_number)] = (
+            sequence_number,
+            self._completed.get(run_key, 0),
+        )
         return invocation_number
 
     def _record(
@@ -124,12 +136,18 @@ class _BaseToolExecutor:
     ) -> ToolInvocation:
         finished_at = self._clock.now()
         duration_ms = (self._clock.monotonic() - started_monotonic) * 1000
+        run_key = (execution_context.experiment_id, execution_context.run_id)
+        sequence_number, completed_before_start = self._start_evidence.pop(
+            (*run_key, tool_name, invocation_number)
+        )
         invocation = ToolInvocation.model_validate(
             {
                 "invocation_id": (f"{execution_context.run_id}:{tool_name}:{invocation_number}"),
                 "run_id": execution_context.run_id,
                 "tool_name": tool_name,
                 "invocation_number": invocation_number,
+                "sequence_number": sequence_number,
+                "completed_before_start": completed_before_start,
                 "arguments": arguments,
                 "started_at": started_at,
                 "finished_at": finished_at,
@@ -146,6 +164,7 @@ class _BaseToolExecutor:
                 "caller_error": caller_error,
             }
         )
+        self._completed[run_key] = self._completed.get(run_key, 0) + 1
         self._recorder.record(invocation)
         return invocation
 

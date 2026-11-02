@@ -91,7 +91,7 @@ def _render_run(run: RunReport, *, show_trace: bool) -> list[str]:
         f"  fingerprint {run.fingerprint[:16]}",
     ]
     if show_trace:
-        lines.append("  trace:")
+        lines.append("  trace (completion order; seq = start order):")
         for index, invocation in enumerate(result.tool_invocations, start=1):
             lines.append(f"    {index:>2}. {_render_invocation(invocation)}")
     return lines
@@ -109,7 +109,8 @@ def _render_invocation(invocation: ToolInvocation) -> str:
     else:
         actual = "executed"
     seen = "caller saw error" if invocation.caller_error is not None else "caller saw success"
-    return f"{call:<22}{fault:<24} actual: {actual:<18} {seen}"
+    seq = invocation.sequence_number if invocation.sequence_number is not None else "-"
+    return f"seq {seq!s:<3} {call:<22}{fault:<24} actual: {actual:<18} {seen}"
 
 
 def _status(status: InvariantStatus | None) -> str:

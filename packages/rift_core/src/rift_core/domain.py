@@ -253,6 +253,10 @@ class ToolInvocation(RiftDomainModel):
     run_id: NonEmptyStr
     tool_name: NonEmptyStr
     invocation_number: PositiveInt
+    sequence_number: PositiveInt | None = None
+    """Run-global, 1-based order in which invocations *started*, across all tools."""
+    completed_before_start: NonNegativeInt | None = None
+    """How many invocations of the run had completed when this one started (happens-before)."""
     arguments: dict[str, JsonValue] = Field(default_factory=dict)
     started_at: AwareDatetime
     finished_at: AwareDatetime
@@ -272,6 +276,13 @@ class ToolInvocation(RiftDomainModel):
     def validate_outcomes(self) -> Self:
         if self.finished_at < self.started_at:
             raise ValueError("finished_at cannot precede started_at")
+
+        if (
+            self.sequence_number is not None
+            and self.completed_before_start is not None
+            and self.completed_before_start >= self.sequence_number
+        ):
+            raise ValueError("completed_before_start must be less than sequence_number")
 
         if self.underlying_operation_committed and not self.underlying_operation_executed:
             raise ValueError("a committed operation must have executed")
@@ -394,6 +405,12 @@ class ExperimentRunResult(RiftDomainModel):
         ]
         if mismatched_invocations:
             raise ValueError(f"tool invocations reference another run: {mismatched_invocations}")
+
+        sequence_numbers = [
+            item.sequence_number for item in self.tool_invocations if item.sequence_number
+        ]
+        if len(sequence_numbers) != len(set(sequence_numbers)):
+            raise ValueError("tool invocation sequence numbers must be unique within a run")
 
         if self.state_snapshot is not None and self.state_snapshot.run_id != self.context.run_id:
             raise ValueError("state snapshot must reference the result's run")
