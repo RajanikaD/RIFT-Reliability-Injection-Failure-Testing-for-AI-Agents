@@ -25,6 +25,7 @@ from rift_core.domain import (
     ScenarioSpec,
     StateSnapshot,
     ToolInvocation,
+    derive_run_outcome,
 )
 
 __all__ = [
@@ -50,4 +51,5 @@ __all__ = [
     "ToolHandler",
     "ToolInvocation",
     "ToolSpec",
+    "derive_run_outcome",
 ]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Annotated, Self
 
@@ -91,6 +92,23 @@ class RunOutcome(StrEnum):
     FAIL = "fail"
     ERROR = "error"
     INCONCLUSIVE = "inconclusive"
+
+
+def derive_run_outcome(results: Sequence[InvariantResult]) -> RunOutcome:
+    """The single rule mapping invariant results to a run outcome.
+
+    No results -> ``INCONCLUSIVE``; any ``ERROR`` -> ``ERROR``; any ``FAIL`` -> ``FAIL``;
+    otherwise ``PASS``. Agent output is deliberately not an input.
+    """
+
+    if not results:
+        return RunOutcome.INCONCLUSIVE
+    statuses = {result.status for result in results}
+    if InvariantStatus.ERROR in statuses:
+        return RunOutcome.ERROR
+    if InvariantStatus.FAIL in statuses:
+        return RunOutcome.FAIL
+    return RunOutcome.PASS
 
 
 class RiftDomainModel(BaseModel):
@@ -383,5 +401,17 @@ class ExperimentRunResult(RiftDomainModel):
         invariant_ids = [item.invariant_id for item in self.invariant_results]
         if len(invariant_ids) != len(set(invariant_ids)):
             raise ValueError("invariant IDs must be unique within a run result")
+
+        # With no invariant results there is nothing to derive from; a run that could not be
+        # evaluated may be reported as ERROR (something broke) or INCONCLUSIVE (nothing to check).
+        derived = derive_run_outcome(self.invariant_results)
+        allowed = (
+            {derived} if self.invariant_results else {RunOutcome.INCONCLUSIVE, RunOutcome.ERROR}
+        )
+        if self.outcome not in allowed:
+            raise ValueError(
+                f"outcome {self.outcome.value} contradicts the invariant results, "
+                f"which imply {derived.value}"
+            )
 
         return self
