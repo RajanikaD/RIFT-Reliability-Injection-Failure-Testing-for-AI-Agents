@@ -20,32 +20,32 @@ class InvariantEvaluationSummary(BaseModel):
 
     results: tuple[InvariantResult, ...]
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def total(self) -> int:
         return len(self.results)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def passed(self) -> int:
         return sum(result.status is InvariantStatus.PASS for result in self.results)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def failed(self) -> int:
         return sum(result.status is InvariantStatus.FAIL for result in self.results)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def errors(self) -> int:
         return sum(result.status is InvariantStatus.ERROR for result in self.results)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def all_passed(self) -> bool:
         return self.total > 0 and self.passed == self.total
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def correctness_ratio(self) -> float:
         """Return passed / total; ERROR results remain in the denominator."""

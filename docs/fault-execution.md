@@ -4,7 +4,7 @@
 
 The `rift_fault_engine` package implements RIFT's framework-neutral boundary around asynchronous tool operations. It numbers calls, deterministically selects configured `FaultRule` objects, controls whether the operation executes, and records immutable `ToolInvocation` evidence.
 
-It does not orchestrate experiments, bind agent frameworks, implement scenario tools, evaluate invariants, or persist records.
+It does not orchestrate experiments, bind agent frameworks, implement scenario tools, evaluate invariants, or persist records. Agents never see executor exceptions directly: `rift_experiment_runner.ExecutorToolGateway` converts them into `ToolCallOutcome` values and makes both timeout kinds indistinguishable (ADR-005).
 
 ## Execution contract
 
@@ -51,6 +51,8 @@ Rule matching has no probability or process-global randomness. Duplicate `(tool_
 `MALFORMED_RESPONSE` executes the operation and records its actual result, then substitutes only the configured caller-visible result.
 
 `TIMEOUT_AFTER_COMMIT` executes the operation exactly once and waits for successful completion. It records the actual result with both execution and commit set to true, discards that result from the caller's perspective, and raises `AmbiguousToolOutcomeError`. It does not roll back state.
+
+`DUPLICATE_REQUEST` executes the operation, then executes it a second time as an at-least-once transport would, and returns the first result to the caller. The record has `underlying_execution_count = 2` and `underlying_result = [first, second]`, where the second element is `{"error": ...}` if the duplicate delivery raised. The caller sees nothing unusual; only the dependency's own idempotency decides whether a second side effect exists.
 
 If the underlying operation itself raises before an after-call fault can be applied, the original exception is recorded and re-raised. That invocation is not labeled as an injected after-call fault.
 

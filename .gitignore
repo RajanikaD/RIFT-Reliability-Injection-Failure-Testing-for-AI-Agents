@@ -10,6 +10,7 @@ __pycache__/
 .coverage
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .uv-cache/
 .venv/
 build/

@@ -116,6 +116,7 @@ class _BaseToolExecutor:
         fault_rule: FaultRule | None = None,
         underlying_operation_executed: bool,
         underlying_operation_committed: bool | None,
+        underlying_execution_count: int | None = None,
         underlying_result: JsonValue | None = None,
         underlying_error: str | None = None,
         caller_response: JsonValue | None = None,
@@ -138,6 +139,7 @@ class _BaseToolExecutor:
                 "fault_phase": fault_rule.phase if fault_rule is not None else None,
                 "underlying_operation_executed": underlying_operation_executed,
                 "underlying_operation_committed": underlying_operation_committed,
+                "underlying_execution_count": underlying_execution_count,
                 "underlying_result": underlying_result,
                 "underlying_error": underlying_error,
                 "caller_response": caller_response,
@@ -298,6 +300,16 @@ class FaultInjectingToolExecutor(_BaseToolExecutor):
 
         if fault_rule.fault_type is FaultType.MALFORMED_RESPONSE:
             return await self._execute_malformed_response(
+                rule=fault_rule,
+                tool_name=tool_name,
+                arguments=arguments,
+                operation=operation,
+                execution_context=execution_context,
+                invocation_number=invocation_number,
+            )
+
+        if fault_rule.fault_type is FaultType.DUPLICATE_REQUEST:
+            return await self._execute_duplicate_request(
                 rule=fault_rule,
                 tool_name=tool_name,
                 arguments=arguments,
@@ -502,6 +514,65 @@ class FaultInjectingToolExecutor(_BaseToolExecutor):
             caller_response=replacement_response,
         )
         return ToolExecution(result=replacement_response, invocation=invocation)
+
+    async def _execute_duplicate_request(
+        self,
+        *,
+        rule: FaultRule,
+        tool_name: str,
+        arguments: dict[str, JsonValue],
+        operation: ToolOperation,
+        execution_context: ExecutionContext,
+        invocation_number: int,
+    ) -> ToolExecution:
+        """Deliver the request twice, as an at-least-once transport might, and show the first.
+
+        The caller cannot observe the second delivery. Whether it creates a second side effect
+        depends only on the dependency's own idempotency. Both underlying outcomes are kept as
+        a two-element ``underlying_result`` list; the second may be ``{"error": ...}``.
+        """
+
+        started_at = self._clock.now()
+        started_monotonic = self._clock.monotonic()
+        try:
+            first_result = await operation()
+        except Exception as error:
+            error_text = _describe_error(error)
+            self._record(
+                tool_name=tool_name,
+                arguments=arguments,
+                invocation_number=invocation_number,
+                execution_context=execution_context,
+                started_at=started_at,
+                started_monotonic=started_monotonic,
+                underlying_operation_executed=True,
+                underlying_operation_committed=None,
+                underlying_error=error_text,
+                caller_error=error_text,
+            )
+            raise
+
+        duplicate_result: JsonValue
+        try:
+            duplicate_result = await operation()
+        except Exception as error:
+            duplicate_result = {"error": _describe_error(error)}
+
+        invocation = self._record(
+            tool_name=tool_name,
+            arguments=arguments,
+            invocation_number=invocation_number,
+            execution_context=execution_context,
+            started_at=started_at,
+            started_monotonic=started_monotonic,
+            fault_rule=rule,
+            underlying_operation_executed=True,
+            underlying_operation_committed=None,
+            underlying_execution_count=2,
+            underlying_result=[first_result, duplicate_result],
+            caller_response=first_result,
+        )
+        return ToolExecution(result=first_result, invocation=invocation)
 
 
 def _describe_error(error: Exception) -> str:

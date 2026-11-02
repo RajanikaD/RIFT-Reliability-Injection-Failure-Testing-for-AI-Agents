@@ -1,0 +1,46 @@
+RIFT experiment  retrying--refund-timeout-after-commit
+  scenario  commerce.cancel_order v1
+  agent     retrying v1
+  seed      0
+  faults    refund_payment-timeout_after_commit-1 (timeout_after_commit on refund_payment #1)
+
+VERDICT: DEGRADED
+  Faults were injected and the faulted run ended fail; invariants not satisfied: exactly_one_refund, refund_amount_correct. The agent nevertheless reported success.
+
+BASELINE run  outcome=pass  invariants=5/5  agent=completed  classification=correct
+  agent says: Order ORD-1001 was cancelled, refunded, restocked, and the customer notified.
+  fingerprint 1596bb4df83412d7
+  trace:
+     1. cancel_order#1                                 actual: executed           caller saw success
+     2. refund_payment#1                               actual: executed           caller saw success
+     3. restore_inventory#1                            actual: executed           caller saw success
+     4. send_confirmation#1                            actual: executed           caller saw success
+
+FAULTED run  outcome=fail  invariants=3/5  agent=completed  classification=silent_failure
+  agent says: Order ORD-1001 was cancelled, refunded, restocked, and the customer notified.
+  fingerprint 963753e5a4058e6d
+  trace:
+     1. cancel_order#1                                 actual: executed           caller saw success
+     2. refund_payment#1       [timeout_after_commit]  actual: executed           caller saw error
+     3. refund_payment#2                               actual: executed           caller saw success
+     4. restore_inventory#1                            actual: executed           caller saw success
+     5. send_confirmation#1                            actual: executed           caller saw success
+
+Invariants (baseline -> faulted)
+    order_cancelled          PASS  -> PASS 
+  ! exactly_one_refund       PASS  -> FAIL 
+  ! refund_amount_correct    PASS  -> FAIL 
+    inventory_restored       PASS  -> PASS 
+    single_confirmation      PASS  -> PASS 
+
+Faulted-run invariant evidence
+  exactly_one_refund: Invariant not satisfied.
+    expected 1  observed 2
+    evidence {"payment_id": "PAY-1001", "refund_ids": ["REF-0001", "REF-0002"]}
+  refund_amount_correct: Refund count or total amount is incorrect.
+    expected "79.99"  observed "159.98"
+    evidence {"payment_id": "PAY-1001", "refund_count": 2, "refund_ids": ["REF-0001", "REF-0002"]}
+
+State differences (baseline vs faulted final state)
+  + refunds[1] = {"amount": "79.99", "idempotency_key": null, "payment_id": "PAY-1001", "refund_id": "REF-0002", "status": "succeeded"}
+

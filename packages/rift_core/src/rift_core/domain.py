@@ -45,12 +45,17 @@ class FaultType(StrEnum):
     TIMEOUT_BEFORE_CALL = "timeout_before_call"
     TIMEOUT_AFTER_COMMIT = "timeout_after_commit"
     MALFORMED_RESPONSE = "malformed_response"
+    DUPLICATE_REQUEST = "duplicate_request"
 
     @property
     def phase(self) -> FaultPhase:
         """Return the only valid phase for this fault type in the current model."""
 
-        if self in {FaultType.TIMEOUT_AFTER_COMMIT, FaultType.MALFORMED_RESPONSE}:
+        if self in {
+            FaultType.TIMEOUT_AFTER_COMMIT,
+            FaultType.MALFORMED_RESPONSE,
+            FaultType.DUPLICATE_REQUEST,
+        }:
             return FaultPhase.AFTER_CALL
         return FaultPhase.BEFORE_CALL
 
@@ -239,6 +244,7 @@ class ToolInvocation(RiftDomainModel):
     fault_phase: FaultPhase | None = None
     underlying_operation_executed: bool
     underlying_operation_committed: bool | None
+    underlying_execution_count: NonNegativeInt | None = None
     underlying_result: JsonValue | None = None
     underlying_error: NonEmptyStr | None = None
     caller_response: JsonValue | None = None
@@ -257,6 +263,14 @@ class ToolInvocation(RiftDomainModel):
                 raise ValueError("a skipped operation has a known uncommitted outcome")
             if self.underlying_result is not None or self.underlying_error is not None:
                 raise ValueError("a skipped operation cannot have an underlying outcome")
+
+        expected_minimum = 1 if self.underlying_operation_executed else 0
+        if self.underlying_execution_count is None:
+            object.__setattr__(self, "underlying_execution_count", expected_minimum)
+        elif not self.underlying_operation_executed and self.underlying_execution_count != 0:
+            raise ValueError("a skipped operation must have an execution count of zero")
+        elif self.underlying_operation_executed and self.underlying_execution_count < 1:
+            raise ValueError("an executed operation must have an execution count of at least one")
 
         if self.underlying_result is not None and self.underlying_error is not None:
             raise ValueError("an invocation cannot have both an underlying result and error")
@@ -292,6 +306,13 @@ class ToolInvocation(RiftDomainModel):
                 raise ValueError("timeout-after-commit requires an executed, committed operation")
             if self.caller_error is None:
                 raise ValueError("timeout-after-commit requires a caller-visible error")
+
+        if (
+            self.fault_type is FaultType.DUPLICATE_REQUEST
+            and self.underlying_operation_executed
+            and self.underlying_execution_count != 2
+        ):
+            raise ValueError("duplicate-request faults execute the underlying operation twice")
 
         if self.underlying_operation_executed is not self.fault_type.underlying_operation_executes:
             raise ValueError(

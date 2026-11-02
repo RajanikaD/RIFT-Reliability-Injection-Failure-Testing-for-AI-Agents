@@ -1,5 +1,16 @@
 """Framework-agnostic RIFT domain models and contracts."""
 
+from rift_core.contracts import (
+    AgentAdapter,
+    AgentRunOutput,
+    AgentStatus,
+    AgentTask,
+    ToolCallOutcome,
+    ToolErrorKind,
+    ToolGateway,
+    ToolHandler,
+    ToolSpec,
+)
 from rift_core.domain import (
     ExecutionContext,
     ExperimentRunResult,
@@ -17,6 +28,10 @@ from rift_core.domain import (
 )
 
 __all__ = [
+    "AgentAdapter",
+    "AgentRunOutput",
+    "AgentStatus",
+    "AgentTask",
     "ExecutionContext",
     "ExperimentRunResult",
     "ExperimentSpec",
@@ -29,5 +44,10 @@ __all__ = [
     "RunOutcome",
     "ScenarioSpec",
     "StateSnapshot",
+    "ToolCallOutcome",
+    "ToolErrorKind",
+    "ToolGateway",
+    "ToolHandler",
     "ToolInvocation",
+    "ToolSpec",
 ]

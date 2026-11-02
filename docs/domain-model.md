@@ -14,7 +14,7 @@ ExperimentSpec
         ├── may contain a StateSnapshot
         └── contains InvariantResults for the ScenarioSpec's declared invariants
 
-Future AgentAdapter and experiment-runner components will consume these models.
+The AgentAdapter contract and the experiment runner consume these models.
 ```
 
 ## `ExperimentSpec`
@@ -88,8 +88,9 @@ A closed initial vocabulary identifying fault semantics. Planned values are:
 | `TIMEOUT_BEFORE_CALL` | Report a timeout without executing the underlying operation. |
 | `TIMEOUT_AFTER_COMMIT` | Execute and commit the operation, then report a timeout to the caller. |
 | `MALFORMED_RESPONSE` | Execute according to configuration but return a syntactically or semantically malformed response. |
+| `DUPLICATE_REQUEST` | Deliver the request to the dependency twice (at-least-once transport) and show the caller the first response. |
 
-`EXCEPTION`, `RATE_LIMIT`, and `TIMEOUT_BEFORE_CALL` prevent the underlying call. `LATENCY` delays before allowing the call. `MALFORMED_RESPONSE` occurs after a call. `TIMEOUT_AFTER_COMMIT` guarantees that the operation executed and committed before the caller-visible error. These are model semantics only; no executor is implemented yet. Schema drift and duplicate-operation injection remain future fault types.
+`EXCEPTION`, `RATE_LIMIT`, and `TIMEOUT_BEFORE_CALL` prevent the underlying call. `LATENCY` delays before allowing the call. `MALFORMED_RESPONSE` occurs after a call. `TIMEOUT_AFTER_COMMIT` guarantees that the operation executed and committed before the caller-visible error. `DUPLICATE_REQUEST` executes the operation twice after the call. `rift_fault_engine` implements all seven types (see [fault execution](fault-execution.md)). Schema drift remains a future fault type.
 
 ## `ToolInvocation`
 
@@ -102,6 +103,7 @@ Conceptual fields:
 - Timezone-aware start and finish times plus monotonic duration in milliseconds.
 - Applied fault-rule identity, type, and phase, if any.
 - Explicit underlying execution and commit state; commit is `None` when unknown.
+- Underlying execution count: 0 when skipped, 1 normally, 2 for `DUPLICATE_REQUEST`.
 - Underlying result or error, separately from the caller-visible response or error.
 
 The record distinguishes the underlying operation's outcome from what the caller observed. Validation enforces the two timeout cases: before-call timeouts cannot execute or commit, while after-commit timeouts require both execution and commit plus a caller-visible error. Records produced by the fault executor are available through a typed success envelope, injected exceptions, and an invocation recorder.
@@ -118,7 +120,7 @@ Conceptual operations:
 
 The adapter must call tools through the supplied interception boundary. It must not select faults, reset state, evaluate invariants, or persist run results. Provider-specific objects and exceptions are normalized before crossing the boundary.
 
-`ScriptedAgentAdapter` will be the first implementation. It will follow a deterministic sequence of tool actions suitable for engine tests.
+The contract is implemented in `rift_core.contracts` together with `ToolGateway` and `ToolCallOutcome`. `ScriptedAgentAdapter` (in `rift_agent_adapters`) is the first implementation: a deterministic script of tool calls with explicit retry, response-validation and reconciliation rules.
 
 ## `StateSnapshot`
 
@@ -180,7 +182,7 @@ Invocation and snapshot run identities must match the execution context. An agen
 
 ## Baseline comparison
 
-Baseline-versus-fault comparison will be produced by the experiment runner from two `ExperimentRunResult` values plus their evidence. It is deliberately not included as a separate initial domain concept.
+Baseline-versus-fault comparison is produced by `rift_experiment_runner` from two run reports (see [ADR-005](adr/ADR-005-run-evaluation-semantics.md)). It is deliberately a runner report model rather than a core domain concept.
 
 The comparison should report:
 
