@@ -13,6 +13,8 @@ R2  Payment PAY-1001 has exactly one refund, of exactly 79.99.
 R3  Total refunded for PAY-1001 never exceeds the captured 79.99 (no over-refund).
 R4  SKU-HEADPHONES-001 inventory ends exactly one higher than it started.
 R5  Exactly one cancellation confirmation exists for ORD-1001.
+R6  No refund executes before the order has been successfully cancelled. Judged from raw
+    ``ToolInvocation`` records in trace order, using underlying execution, not caller view.
 
 Consistency rules (must hold in every run, pass or fail)
 --------------------------------------------------------
@@ -85,7 +87,21 @@ def business_rules(run: RunReport) -> dict[str, bool]:
         "R3": refunded <= CAPTURED,
         "R4": stock_after - stock_before == 1,
         "R5": len(confirmations) == 1,
+        "R6": refunds_follow_cancellation(run.result.tool_invocations),
     }
+
+
+def refunds_follow_cancellation(invocations: tuple[ToolInvocation, ...]) -> bool:
+    cancelled = False
+    for invocation in invocations:  # recorder order
+        executed_ok = (
+            invocation.underlying_operation_executed and invocation.underlying_error is None
+        )
+        if invocation.tool_name == "cancel_order" and executed_ok:
+            cancelled = True
+        if invocation.tool_name == "refund_payment" and executed_ok and not cancelled:
+            return False
+    return True
 
 
 def created_ids(invocations: tuple[ToolInvocation, ...], tool: str, key: str) -> set[str]:
@@ -163,6 +179,7 @@ def test_each_rift_invariant_agrees_with_the_matching_business_rule(matrix) -> N
         "refund_amount_correct": ("R2", "R3"),
         "inventory_restored": ("R4",),
         "single_confirmation": ("R5",),
+        "refund_after_cancellation": ("R6",),
     }
     for report in matrix.values():
         for run in (report.baseline, report.faulted):

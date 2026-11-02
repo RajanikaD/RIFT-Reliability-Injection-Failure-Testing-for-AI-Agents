@@ -6,6 +6,7 @@ from rift_experiment_runner.evaluation import (
     derive_outcome,
     diff_states,
     fingerprint,
+    invocation_evidence,
 )
 from rift_experiment_runner.gateway import ExecutorToolGateway
 from rift_experiment_runner.models import (
@@ -45,5 +46,6 @@ __all__ = [
     "derive_outcome",
     "diff_states",
     "fingerprint",
+    "invocation_evidence",
     "render_text",
 ]

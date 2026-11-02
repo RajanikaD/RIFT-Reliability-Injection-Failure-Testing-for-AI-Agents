@@ -59,6 +59,31 @@ def fired_rule_ids(invocations: Iterable[ToolInvocation]) -> tuple[str, ...]:
     return tuple(item.fault_rule_id for item in invocations if item.fault_rule_id is not None)
 
 
+def invocation_evidence(invocations: Sequence[ToolInvocation]) -> dict[str, JsonValue]:
+    """Build the trace evidence that invariants may opt in to via their evaluation context.
+
+    It describes what actually executed, never what the caller saw: an operation whose response
+    was lost still ``succeeded``. ``completion_position`` is the 1-based order in which the
+    executor finished recording invocations.
+    """
+
+    return {
+        "invocations": [
+            {
+                "completion_position": position,
+                "tool": item.tool_name,
+                "invocation_number": item.invocation_number,
+                "executed": item.underlying_operation_executed,
+                "succeeded": item.underlying_operation_executed and item.underlying_error is None,
+                "committed": item.underlying_operation_committed,
+                "execution_count": item.underlying_execution_count,
+                "fault_type": item.fault_type.value if item.fault_type else None,
+            }
+            for position, item in enumerate(invocations, start=1)
+        ]
+    }
+
+
 def fingerprint(
     *,
     invocations: Sequence[ToolInvocation],

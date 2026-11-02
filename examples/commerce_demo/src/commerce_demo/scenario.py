@@ -8,8 +8,8 @@ from importlib import resources
 
 from pydantic import JsonValue
 
-from commerce_demo.invariants import commerce_cancellation_invariants
 from commerce_demo.models import CommerceSnapshot
+from commerce_demo.ordering import commerce_scenario_invariants
 from commerce_demo.sandbox import CommerceSandbox
 from commerce_demo.tools import TOOL_SPECS, build_tool_handlers
 from rift_core import ExperimentSpec, FaultRule, ScenarioSpec, ToolHandler, ToolSpec
@@ -64,10 +64,11 @@ COMMERCE_SCENARIO = ScenarioSpec(
     scenario_id=SCENARIO_ID,
     name="Cancel and refund an ecommerce order",
     task=TASK,
-    version=1,
+    # v2: added the trace-aware refund_after_cancellation invariant (Milestone 2, D4).
+    version=2,
     initial_state=_declared_initial_state(),
     tool_names=tuple(spec.name for spec in TOOL_SPECS),
-    invariant_ids=tuple(invariant.name for invariant in commerce_cancellation_invariants()),
+    invariant_ids=tuple(invariant.name for invariant in commerce_scenario_invariants()),
 )
 
 
@@ -82,7 +83,7 @@ class CommerceScenarioBinding:
         return CommerceEnvironment()
 
     def invariants(self) -> Sequence[Invariant[CommerceSnapshot]]:
-        return commerce_cancellation_invariants()
+        return commerce_scenario_invariants()
 
 
 def commerce_experiment(

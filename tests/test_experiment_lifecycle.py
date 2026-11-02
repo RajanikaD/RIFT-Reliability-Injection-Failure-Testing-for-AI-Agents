@@ -160,9 +160,9 @@ def test_partially_fired_rules_are_listed_without_hiding_the_verdict() -> None:
 
 def test_mismatched_scenario_version_is_rejected() -> None:
     experiment = case("none").model_copy(
-        update={"scenario": COMMERCE_SCENARIO.model_copy(update={"version": 2})}
+        update={"scenario": COMMERCE_SCENARIO.model_copy(update={"version": 99})}
     )
-    with pytest.raises(ExperimentConfigurationError, match="v2"):
+    with pytest.raises(ExperimentConfigurationError, match="v99"):
         run(experiment, naive_agent())
 
 

@@ -29,6 +29,7 @@ from rift_experiment_runner.evaluation import (
     diff_states,
     fingerprint,
     fired_rule_ids,
+    invocation_evidence,
 )
 from rift_experiment_runner.gateway import ExecutorToolGateway
 from rift_experiment_runner.models import AdapterIdentity, ExperimentReport, RunReport
@@ -178,10 +179,14 @@ class ExperimentRunner(Generic[StateT]):
 
         after = environment.snapshot()
         final_state = environment.snapshot_json(after)
-        summary = InvariantEvaluator(binding.invariants()).evaluate(
-            InvariantEvaluationContext(before_state=before, after_state=after)
-        )
         invocations = recorder.records
+        summary = InvariantEvaluator(binding.invariants()).evaluate(
+            InvariantEvaluationContext(
+                before_state=before,
+                after_state=after,
+                evidence=invocation_evidence(invocations),
+            )
+        )
         outcome = derive_outcome(summary.results)
         result = ExperimentRunResult(
             context=context,
