@@ -100,7 +100,7 @@ Other commands: `rift list` (agents and fault cases), `rift run --json report.js
 | Agent-claim vs. actual-state classification; invalid-baseline and unfired-fault detection | Implemented |
 | CLI with text and JSON reports; reproducibility fingerprints; run-global invocation sequence and happens-before evidence | Implemented |
 | Run outcome validated against invariant results in `rift_core` | Implemented |
-| CI workflow: lint, format, strict mypy, tests, demo, build on 3.11 and 3.12; Docker build, non-root, `/health`, CLI | Written; steps replayed locally on 3.12; **not yet run on GitHub** |
+| CI workflow: lint, format, strict mypy, tests, demo, build on 3.11 and 3.12; Docker build, non-root, `/health`, CLI | Verified in GitHub Actions run [`41390815914`](https://github.com/RajanikaD/RIFT-Reliability-Injection-Failure-Testing-for-AI-Agents/actions/runs/41390815914): 201 passed on Python 3.11.15 and 3.12.13; image built, UID 10001, `/health` ok, CLI ran in the container |
 | API | `GET /health` only |
 | Seeded probabilistic faults, multi-seed runs | Planned (seed recorded, not consumed) |
 | Persistence, experiment API, web dashboard | Planned (V2) |
@@ -152,8 +152,10 @@ The API health endpoint: `uv run uvicorn rift_api.main:app --reload`, then
 ignored by Git.
 
 Build and run the API container from the repository root. The image installs strictly from
-`uv.lock` and runs as an unprivileged user. Its build has not been run locally (no Docker engine
-was available); the CI `docker` job builds and smoke-tests it. See
+`uv.lock` and runs as an unprivileged user (UID 10001). The CI `docker` job builds it and checks
+the UID, `/health` and the CLI; this was verified in GitHub Actions run
+[`41390815914`](https://github.com/RajanikaD/RIFT-Reliability-Injection-Failure-Testing-for-AI-Agents/actions/runs/41390815914).
+The image has not been built on a local Docker engine. See
 [Milestone 2](docs/milestone-2-evidence-hardening.md).
 
 ```bash

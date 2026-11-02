@@ -76,6 +76,24 @@ step back the [commit plan](commit-plan.md).
 - **Pending approval:** creating the commits, pushing `feature/evidence-hardening`, and opening a
   draft PR (required for CI to run).
 
+## 2026-11-02 — Repository integration and GitHub CI verification
+
+- **Integrated:** eight commits on `feature/evidence-hardening` (`fb0ca35` … `49ef803`) on base
+  `677ab21`. They were pushed normally and opened as draft PR #1 against `main`; `main` is
+  unchanged. Commit 1 is the pre-existing invariant-engine work, committed unchanged with no AI
+  trailer; commits 2–8 carry the `Co-Authored-By: Claude` trailer.
+- **Verified in GitHub Actions** (run
+  [`41390815914`](https://github.com/RajanikaD/RIFT-Reliability-Injection-Failure-Testing-for-AI-Agents/actions/runs/41390815914),
+  commit `49ef803`, Ubuntu; all jobs succeeded):
+  - Python 3.11.15 and 3.12.13: locked install, ruff, format, strict mypy, **201 passed** on each,
+    demo smoke test, sdist and wheel built, fixture present in the wheel.
+  - Docker: image built with `uv sync --locked`; runs as UID **10001**; `/health` returned
+    `{"status":"ok","service":"rift-api"}`; the CLI in the container returned `RESILIENT`.
+- **Still not verified:** a local Docker engine build. **Non-blocking notices:** GitHub Actions
+  Node 20 deprecation for `actions/checkout@v4` and `astral-sh/setup-uv@v6`; `useradd` UID above
+  `SYS_UID_MAX`. No code was changed for these.
+- **Earlier entries** above are kept as written; they record what was verified at the time.
+
 ## Backlog status
 
 | ID | Item | Status |
@@ -87,7 +105,7 @@ step back the [commit plan](commit-plan.md).
 | B5 | E2E proofs (recovery, failed recovery, partial, after-commit, idempotency, duplicates, reproducibility) | Done |
 | B6 | `DUPLICATE_REQUEST` fault | Done |
 | B7 | Stale docs, README implemented-vs-planned | Done |
-| B8 | CI and mypy | mypy verified; CI steps replayed locally on 3.12; GitHub run pending |
+| B8 | CI and mypy | Done; verified in GitHub Actions run 41390815914 (3.11 and 3.12) |
 | B9 | Boundary test for every package | Done |
 | B10 | Seeded probabilistic rules, multi-seed runs | After Milestone 2 |
 | B11 | Experiment JSON files via CLI | Done (`--spec`) |
@@ -96,8 +114,8 @@ step back the [commit plan](commit-plan.md).
 | B14 | Web dashboard | Open (after B13) |
 | B15 | Real framework adapter (optional extra) | Open |
 | B16 | Evidence export bundle | Partly (`--json` report) |
-| M2-1 | Commit (with approval), push branch, CI green on 3.11/3.12 | Rehearsed; awaiting approval to commit, push and open a draft PR |
-| M2-2 | Docker build verified; lock-based install; non-root user (M1-D7) | Lock/non-root done; image build pending a Docker engine or CI |
+| M2-1 | Commit (with approval), push branch, CI green on 3.11/3.12 | Done: draft PR #1; CI green in run 41390815914; merge awaits approval |
+| M2-2 | Docker build verified; lock-based install; non-root user (M1-D7) | Done; verified in CI run 41390815914 (local engine build not run) |
 | M2-3 | Validate outcome against invariant results in `rift_core` (M1-D1) | Done, verified |
 | M2-4 | Checked-in commerce initial-state fixture (M1-D3) | Done, verified |
 | M2-5 | Run-global invocation `sequence_number` (M1-D2) | Done, verified (plus `completed_before_start`, see ADR-006) |

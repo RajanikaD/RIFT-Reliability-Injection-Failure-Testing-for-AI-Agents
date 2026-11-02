@@ -195,3 +195,30 @@ Details and before/after evidence: [milestone-2-evidence-hardening.md](milestone
 | M1-D6 Throwaway environment in `_validate` | Open (not in Milestone 2 scope) | — |
 | CI on 3.11 / 3.12 | Workflow written; `check` steps replayed locally on **3.12 (Windows)** only | GitHub run requires a push |
 | Python 3.11 runtime | **Unverified** | Not installed locally |
+
+## 11. Status after GitHub CI verification (2026-11-02 UTC)
+
+§9 and §10 record what was verified at the time and are left unchanged. This section records
+what GitHub Actions run
+[`41390815914`](https://github.com/RajanikaD/RIFT-Reliability-Injection-Failure-Testing-for-AI-Agents/actions/runs/41390815914)
+verified. It ran on PR #1 (`pull_request` event) at commit `49ef803` on Ubuntu, and all three jobs
+succeeded.
+
+| Item | Previous status | Status now | Evidence in run `41390815914` |
+| --- | --- | --- | --- |
+| Python 3.11 runtime | Unverified (§9, §10) | **Verified in CI** | `check (3.11)` on CPython 3.11.15: locked install, ruff, format, strict mypy (37 files), **201 passed**, demo `RESILIENT`, sdist and wheel built, wheel contains the scenario fixture |
+| Python 3.12 on Linux | Replayed locally on Windows only | **Verified in CI** | `check (3.12)` on CPython 3.12.13: same steps, **201 passed** |
+| Docker image build (M1-D7) | Image build unverified | **Verified in CI** | `docker` job: `uv sync --locked --no-install-project --no-dev`, then `uv sync --locked --no-dev --no-editable` installing `rift==0.1.0`; pinned uv 0.11.17 |
+| Non-root execution | Static policy test only | **Verified in CI** | `test "$(docker run --rm rift-api:ci id -u)" = "10001"` succeeded |
+| `/health` in the container | Not run | **Verified in CI** | Returned `{"status":"ok","service":"rift-api"}`; the first attempt got a connection reset during startup and the retry loop succeeded |
+| CLI in the container | Not run | **Verified in CI** | `rift run --agent reconciling --fault refund-timeout-after-commit --strict` on scenario v2 returned `VERDICT: RESILIENT` |
+
+**Still not verified:** building or running the image on a local Docker engine. **Still open:**
+M1-D5, M1-D6, and the limitations in
+[milestone-2-evidence-hardening.md](milestone-2-evidence-hardening.md).
+
+Non-blocking CI notices, with no code change made:
+- GitHub reports that the Node.js 20 runtime used by `actions/checkout@v4` and
+  `astral-sh/setup-uv@v6` is deprecated and forced onto Node 24.
+- `punycode` and `url.parse` deprecation notices come from inside those actions.
+- `useradd` warns that UID 10001 exceeds `SYS_UID_MAX`; 10001 is a deliberate fixed non-root UID.
