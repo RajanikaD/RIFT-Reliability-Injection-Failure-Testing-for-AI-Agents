@@ -69,6 +69,7 @@ def test_partial_completion_is_detected_when_dependency_stays_down() -> None:
         "refund_amount_correct": InvariantStatus.FAIL,
         "inventory_restored": InvariantStatus.FAIL,
         "single_confirmation": InvariantStatus.FAIL,
+        "refund_after_cancellation": InvariantStatus.PASS,  # no refund ever executed
     }
     assert len(calls(report, "refund_payment")) == 3
     assert calls(report, "restore_inventory") == []
