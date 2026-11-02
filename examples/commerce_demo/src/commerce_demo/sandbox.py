@@ -105,6 +105,21 @@ class CommerceSandbox:
 
         return refund
 
+    async def get_inventory(self, sku: str) -> InventoryItem:
+        item = self._repository.get_inventory_item(sku)
+        if item is None:
+            raise InventoryItemNotFoundError(f"inventory item not found: {sku}")
+        return item
+
+    async def list_refunds(self, payment_id: str) -> tuple[Refund, ...]:
+        if self._repository.get_payment(payment_id) is None:
+            raise PaymentNotFoundError(f"payment not found: {payment_id}")
+        return tuple(
+            refund
+            for refund in self._repository.snapshot().refunds
+            if refund.payment_id == payment_id
+        )
+
     async def restore_inventory(self, sku: str, quantity: int) -> InventoryItem:
         if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0:
             raise InvalidInventoryQuantityError(
@@ -172,7 +187,8 @@ class CommerceSandbox:
 def _validate_refund_amount(amount: object) -> None:
     if not isinstance(amount, Decimal) or not amount.is_finite() or amount <= 0:
         raise InvalidRefundAmountError("refund amount must be a positive Decimal value")
-    if amount.as_tuple().exponent < -2:
+    exponent = amount.as_tuple().exponent
+    if isinstance(exponent, int) and exponent < -2:
         raise InvalidRefundAmountError("refund amount cannot have more than two decimal places")
 
 

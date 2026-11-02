@@ -1,0 +1,42 @@
+RIFT experiment  idempotent--inventory-timeout-after-commit
+  scenario  commerce.cancel_order v1
+  agent     idempotent v1
+  seed      0
+  faults    restore_inventory-timeout_after_commit-1 (timeout_after_commit on restore_inventory #1)
+
+VERDICT: DEGRADED
+  Faults were injected and the faulted run ended fail; invariants not satisfied: inventory_restored. The agent nevertheless reported success.
+
+BASELINE run  outcome=pass  invariants=5/5  agent=completed  classification=correct
+  agent says: Order ORD-1001 was cancelled, refunded, restocked, and the customer notified.
+  fingerprint 713fdf9eb105692d
+  trace:
+     1. cancel_order#1                                 actual: executed           caller saw success
+     2. refund_payment#1                               actual: executed           caller saw success
+     3. restore_inventory#1                            actual: executed           caller saw success
+     4. send_confirmation#1                            actual: executed           caller saw success
+
+FAULTED run  outcome=fail  invariants=4/5  agent=completed  classification=silent_failure
+  agent says: Order ORD-1001 was cancelled, refunded, restocked, and the customer notified.
+  fingerprint a6d2bd3cd690c8a3
+  trace:
+     1. cancel_order#1                                 actual: executed           caller saw success
+     2. refund_payment#1                               actual: executed           caller saw success
+     3. restore_inventory#1    [timeout_after_commit]  actual: executed           caller saw error
+     4. restore_inventory#2                            actual: executed           caller saw success
+     5. send_confirmation#1                            actual: executed           caller saw success
+
+Invariants (baseline -> faulted)
+    order_cancelled          PASS  -> PASS 
+    exactly_one_refund       PASS  -> PASS 
+    refund_amount_correct    PASS  -> PASS 
+  ! inventory_restored       PASS  -> FAIL 
+    single_confirmation      PASS  -> PASS 
+
+Faulted-run invariant evidence
+  inventory_restored: Invariant not satisfied.
+    expected 1  observed 2
+    evidence {"after_quantity": 11, "before_quantity": 9, "sku": "SKU-HEADPHONES-001"}
+
+State differences (baseline vs faulted final state)
+  ~ inventory[0].available_quantity: 10 -> 11

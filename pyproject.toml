@@ -19,15 +19,23 @@ dependencies = [
 dev = [
     "httpx>=0.28,<1",
     "pytest>=8.3,<9",
+    "mypy>=1.13,<2",
     "ruff>=0.9,<1",
 ]
+
+[project.scripts]
+rift = "rift_cli.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = [
     "apps/api/src/rift_api",
+    "apps/cli/src/rift_cli",
     "examples/commerce_demo/src/commerce_demo",
+    "packages/rift_agent_adapters/src/rift_agent_adapters",
     "packages/rift_core/src/rift_core",
+    "packages/rift_experiment_runner/src/rift_experiment_runner",
     "packages/rift_fault_engine/src/rift_fault_engine",
+    "packages/rift_invariant_engine/src/rift_invariant_engine",
 ]
 
 [tool.pytest.ini_options]
@@ -39,9 +47,13 @@ target-version = "py311"
 line-length = 100
 src = [
     "apps/api/src",
+    "apps/cli/src",
     "examples/commerce_demo/src",
+    "packages/rift_agent_adapters/src",
     "packages/rift_core/src",
+    "packages/rift_experiment_runner/src",
     "packages/rift_fault_engine/src",
+    "packages/rift_invariant_engine/src",
     "tests",
 ]
 
@@ -52,4 +64,29 @@ select = [
     "F",
     "I",
     "UP",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = [
+    "apps/api/src",
+    "apps/cli/src",
+    "examples/commerce_demo/src",
+    "packages/rift_agent_adapters/src",
+    "packages/rift_core/src",
+    "packages/rift_experiment_runner/src",
+    "packages/rift_fault_engine/src",
+    "packages/rift_invariant_engine/src",
+]
+packages = [
+    "commerce_demo",
+    "rift_agent_adapters",
+    "rift_api",
+    "rift_cli",
+    "rift_core",
+    "rift_experiment_runner",
+    "rift_fault_engine",
+    "rift_invariant_engine",
 ]

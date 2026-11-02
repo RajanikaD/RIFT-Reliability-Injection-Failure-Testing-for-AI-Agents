@@ -40,8 +40,8 @@ The planned product will:
 - Timeout before execution, where the operation did not run.
 - Timeout after commit, where the operation succeeded but the caller did not receive confirmation.
 - Malformed tool responses.
-- Schema drift.
-- Duplicate operations.
+- Schema drift (not yet implemented).
+- Duplicate operations (`DUPLICATE_REQUEST`).
 
 The initial core need not implement every listed type. `FaultType` provides a stable vocabulary, while each roadmap phase states which behaviors are implemented.
 
@@ -59,7 +59,7 @@ The sandbox will expose controlled ecommerce operations and inspectable state. I
 - Inventory is restored once.
 - Exactly one confirmation is sent.
 
-These are acceptance targets for a future milestone, not functionality included in the current repository.
+These invariants are implemented and evaluated by the local runner; run `rift demo` to see them against every fault case.
 
 ## Success criteria
 

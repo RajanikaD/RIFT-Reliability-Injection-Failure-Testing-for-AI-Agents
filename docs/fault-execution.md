@@ -4,7 +4,7 @@
 
 The `rift_fault_engine` package implements RIFT's framework-neutral boundary around asynchronous tool operations. It numbers calls, deterministically selects configured `FaultRule` objects, controls whether the operation executes, and records immutable `ToolInvocation` evidence.
 
-It does not orchestrate experiments, bind agent frameworks, implement scenario tools, evaluate invariants, or persist records.
+It does not orchestrate experiments, bind agent frameworks, implement scenario tools, evaluate invariants, or persist records. Agents never see executor exceptions directly: `rift_experiment_runner.ExecutorToolGateway` converts them into `ToolCallOutcome` values and makes both timeout kinds indistinguishable (ADR-005).
 
 ## Execution contract
 
@@ -52,6 +52,8 @@ Rule matching has no probability or process-global randomness. Duplicate `(tool_
 
 `TIMEOUT_AFTER_COMMIT` executes the operation exactly once and waits for successful completion. It records the actual result with both execution and commit set to true, discards that result from the caller's perspective, and raises `AmbiguousToolOutcomeError`. It does not roll back state.
 
+`DUPLICATE_REQUEST` executes the operation, then executes it a second time as an at-least-once transport would, and returns the first result to the caller. The record has `underlying_execution_count = 2` and `underlying_result = [first, second]`, where the second element is `{"error": ...}` if the duplicate delivery raised. The caller sees nothing unusual; only the dependency's own idempotency decides whether a second side effect exists.
+
 If the underlying operation itself raises before an after-call fault can be applied, the original exception is recorded and re-raised. That invocation is not labeled as an injected after-call fault.
 
 ## Actual versus caller-visible outcomes
@@ -76,7 +78,13 @@ refund_payment  -> 2
 get_order       -> 2
 ```
 
-A separate run starts each tool at invocation one, even when the same executor instance handles both contexts. Invocation identifiers are derived deterministically from the run ID, tool name, and invocation number.
+A separate run starts each tool at invocation one, even when the same executor instance handles both contexts.
+
+Each invocation also receives a run-global `sequence_number` when it **starts**, and records
+`completed_before_start`, the number of the run's invocations that had finished at that moment.
+The recorder lists invocations in **completion** order. For sequential callers the two orders
+agree; for overlapping calls they can differ, and `completed_before_start` is what establishes
+whether one call finished before another began. Invocation identifiers are derived deterministically from the run ID, tool name, and invocation number.
 
 ## Timing abstractions
 

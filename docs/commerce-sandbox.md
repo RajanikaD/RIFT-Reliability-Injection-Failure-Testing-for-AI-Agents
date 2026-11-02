@@ -8,7 +8,10 @@ The sandbox is not an agent, experiment runner, invariant evaluator, or persiste
 
 ## Dependency boundary
 
-`commerce_demo` does not import or know about the fault engine. It exposes ordinary asynchronous business operations. A caller may place RIFT's tool-execution boundary in front of those operations:
+The commerce business models, repository, and sandbox do not import or know about the fault
+engine. They expose ordinary asynchronous business operations. The example package also contains
+separate commerce-specific invariant definitions that depend on the generic invariant engine. A
+caller may place RIFT's tool-execution boundary in front of the sandbox operations:
 
 ```text
 Agent or test
@@ -84,7 +87,8 @@ No UUID or wall-clock source participates in identifier generation. `reset()` re
 
 `snapshot()` returns a frozen `CommerceSnapshot` containing ordered tuples of all orders, payments, refunds, inventory items, and notifications. Every contained entity is also frozen. Because operations replace stored entities rather than mutating them, a previously captured snapshot does not change when later operations modify repository state.
 
-The snapshot intentionally contains all state needed by the next milestone's invariant evaluation, but it does not evaluate any invariant itself.
+The snapshot contains all state needed by commerce invariant evaluation, but it does not evaluate
+any invariant itself.
 
 ## Intentional limitations
 
@@ -92,5 +96,5 @@ The snapshot intentionally contains all state needed by the next milestone's inv
 - No refund cap or real payment-provider behavior.
 - No idempotency for inventory restoration.
 - No database, API, authentication, agent, or experiment orchestration.
-- No invariant definitions or reliability scoring.
-
+- No arbitrary reliability scoring; aggregation is limited to transparent invariant counts and an
+  unweighted pass ratio.

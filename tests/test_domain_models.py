@@ -230,10 +230,12 @@ def test_run_result_serialization_round_trip() -> None:
         invariant_results=(
             InvariantResult(
                 invariant_id="resource-updated",
+                description="The resource must be updated.",
                 status=InvariantStatus.PASS,
                 message="Resource is updated.",
                 expected="updated",
                 observed="updated",
+                evidence={"resource_id": "resource-1"},
             ),
         ),
     )
@@ -334,3 +336,22 @@ def test_timeout_after_commit_rejects_uncommitted_operation() -> None:
             underlying_operation_committed=False,
             caller_error="response timed out",
         )
+
+
+def test_duplicate_request_requires_two_executions() -> None:
+    with pytest.raises(ValidationError, match="twice"):
+        ToolInvocation(
+            invocation_id="run-1:tool:1",
+            run_id="run-1",
+            tool_name="tool",
+            invocation_number=1,
+            started_at=datetime(2026, 9, 18, tzinfo=UTC),
+            finished_at=datetime(2026, 9, 18, tzinfo=UTC),
+            duration_ms=0,
+            fault_rule_id="dup",
+            fault_type=FaultType.DUPLICATE_REQUEST,
+            underlying_operation_executed=True,
+            underlying_operation_committed=None,
+            underlying_execution_count=1,
+        )
+    assert FaultType.DUPLICATE_REQUEST.phase is FaultPhase.AFTER_CALL

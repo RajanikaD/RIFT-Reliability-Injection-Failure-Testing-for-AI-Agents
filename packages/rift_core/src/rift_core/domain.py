@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Annotated, Self
 
@@ -45,12 +46,17 @@ class FaultType(StrEnum):
     TIMEOUT_BEFORE_CALL = "timeout_before_call"
     TIMEOUT_AFTER_COMMIT = "timeout_after_commit"
     MALFORMED_RESPONSE = "malformed_response"
+    DUPLICATE_REQUEST = "duplicate_request"
 
     @property
     def phase(self) -> FaultPhase:
         """Return the only valid phase for this fault type in the current model."""
 
-        if self in {FaultType.TIMEOUT_AFTER_COMMIT, FaultType.MALFORMED_RESPONSE}:
+        if self in {
+            FaultType.TIMEOUT_AFTER_COMMIT,
+            FaultType.MALFORMED_RESPONSE,
+            FaultType.DUPLICATE_REQUEST,
+        }:
             return FaultPhase.AFTER_CALL
         return FaultPhase.BEFORE_CALL
 
@@ -86,6 +92,23 @@ class RunOutcome(StrEnum):
     FAIL = "fail"
     ERROR = "error"
     INCONCLUSIVE = "inconclusive"
+
+
+def derive_run_outcome(results: Sequence[InvariantResult]) -> RunOutcome:
+    """The single rule mapping invariant results to a run outcome.
+
+    No results -> ``INCONCLUSIVE``; any ``ERROR`` -> ``ERROR``; any ``FAIL`` -> ``FAIL``;
+    otherwise ``PASS``. Agent output is deliberately not an input.
+    """
+
+    if not results:
+        return RunOutcome.INCONCLUSIVE
+    statuses = {result.status for result in results}
+    if InvariantStatus.ERROR in statuses:
+        return RunOutcome.ERROR
+    if InvariantStatus.FAIL in statuses:
+        return RunOutcome.FAIL
+    return RunOutcome.PASS
 
 
 class RiftDomainModel(BaseModel):
@@ -230,6 +253,10 @@ class ToolInvocation(RiftDomainModel):
     run_id: NonEmptyStr
     tool_name: NonEmptyStr
     invocation_number: PositiveInt
+    sequence_number: PositiveInt | None = None
+    """Run-global, 1-based order in which invocations *started*, across all tools."""
+    completed_before_start: NonNegativeInt | None = None
+    """How many invocations of the run had completed when this one started (happens-before)."""
     arguments: dict[str, JsonValue] = Field(default_factory=dict)
     started_at: AwareDatetime
     finished_at: AwareDatetime
@@ -239,6 +266,7 @@ class ToolInvocation(RiftDomainModel):
     fault_phase: FaultPhase | None = None
     underlying_operation_executed: bool
     underlying_operation_committed: bool | None
+    underlying_execution_count: NonNegativeInt | None = None
     underlying_result: JsonValue | None = None
     underlying_error: NonEmptyStr | None = None
     caller_response: JsonValue | None = None
@@ -249,6 +277,13 @@ class ToolInvocation(RiftDomainModel):
         if self.finished_at < self.started_at:
             raise ValueError("finished_at cannot precede started_at")
 
+        if (
+            self.sequence_number is not None
+            and self.completed_before_start is not None
+            and self.completed_before_start >= self.sequence_number
+        ):
+            raise ValueError("completed_before_start must be less than sequence_number")
+
         if self.underlying_operation_committed and not self.underlying_operation_executed:
             raise ValueError("a committed operation must have executed")
 
@@ -257,6 +292,14 @@ class ToolInvocation(RiftDomainModel):
                 raise ValueError("a skipped operation has a known uncommitted outcome")
             if self.underlying_result is not None or self.underlying_error is not None:
                 raise ValueError("a skipped operation cannot have an underlying outcome")
+
+        expected_minimum = 1 if self.underlying_operation_executed else 0
+        if self.underlying_execution_count is None:
+            object.__setattr__(self, "underlying_execution_count", expected_minimum)
+        elif not self.underlying_operation_executed and self.underlying_execution_count != 0:
+            raise ValueError("a skipped operation must have an execution count of zero")
+        elif self.underlying_operation_executed and self.underlying_execution_count < 1:
+            raise ValueError("an executed operation must have an execution count of at least one")
 
         if self.underlying_result is not None and self.underlying_error is not None:
             raise ValueError("an invocation cannot have both an underlying result and error")
@@ -293,6 +336,13 @@ class ToolInvocation(RiftDomainModel):
             if self.caller_error is None:
                 raise ValueError("timeout-after-commit requires a caller-visible error")
 
+        if (
+            self.fault_type is FaultType.DUPLICATE_REQUEST
+            and self.underlying_operation_executed
+            and self.underlying_execution_count != 2
+        ):
+            raise ValueError("duplicate-request faults execute the underlying operation twice")
+
         if self.underlying_operation_executed is not self.fault_type.underlying_operation_executes:
             raise ValueError(
                 f"{self.fault_type.value} has contradictory underlying execution evidence"
@@ -315,10 +365,12 @@ class InvariantResult(RiftDomainModel):
     """The evidence-bearing result of evaluating one invariant."""
 
     invariant_id: NonEmptyStr
+    description: NonEmptyStr
     status: InvariantStatus
     message: NonEmptyStr
     expected: JsonValue | None = None
     observed: JsonValue | None = None
+    evidence: dict[str, JsonValue] = Field(default_factory=dict)
     error: NonEmptyStr | None = None
 
     @model_validator(mode="after")
@@ -354,11 +406,29 @@ class ExperimentRunResult(RiftDomainModel):
         if mismatched_invocations:
             raise ValueError(f"tool invocations reference another run: {mismatched_invocations}")
 
+        sequence_numbers = [
+            item.sequence_number for item in self.tool_invocations if item.sequence_number
+        ]
+        if len(sequence_numbers) != len(set(sequence_numbers)):
+            raise ValueError("tool invocation sequence numbers must be unique within a run")
+
         if self.state_snapshot is not None and self.state_snapshot.run_id != self.context.run_id:
             raise ValueError("state snapshot must reference the result's run")
 
         invariant_ids = [item.invariant_id for item in self.invariant_results]
         if len(invariant_ids) != len(set(invariant_ids)):
             raise ValueError("invariant IDs must be unique within a run result")
+
+        # With no invariant results there is nothing to derive from; a run that could not be
+        # evaluated may be reported as ERROR (something broke) or INCONCLUSIVE (nothing to check).
+        derived = derive_run_outcome(self.invariant_results)
+        allowed = (
+            {derived} if self.invariant_results else {RunOutcome.INCONCLUSIVE, RunOutcome.ERROR}
+        )
+        if self.outcome not in allowed:
+            raise ValueError(
+                f"outcome {self.outcome.value} contradicts the invariant results, "
+                f"which imply {derived.value}"
+            )
 
         return self

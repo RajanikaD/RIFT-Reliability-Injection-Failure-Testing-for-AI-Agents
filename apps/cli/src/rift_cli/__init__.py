@@ -1,0 +1,1 @@
+"""RIFT command-line interface."""
