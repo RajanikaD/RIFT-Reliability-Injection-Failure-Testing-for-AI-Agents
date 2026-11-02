@@ -1,0 +1,42 @@
+RIFT experiment  refund-first--no-faults
+  scenario  commerce.cancel_order v2
+  agent     refund-first v1
+  seed      0
+  faults    none
+
+VERDICT: BASELINE_INVALID
+  The fault-free baseline ended fail, so it is not a valid control. Fix the agent or scenario before interpreting the faulted run.
+
+BASELINE run  outcome=fail  invariants=5/6  agent=completed  classification=silent_failure
+  agent says: Order cancelled and refunded.
+  fingerprint 6ed590743c1c0145
+  trace (completion order; seq = start order):
+     1. seq 1   refund_payment#1                               actual: executed           caller saw success
+     2. seq 2   send_confirmation#1                            actual: executed           caller saw success
+     3. seq 3   restore_inventory#1                            actual: executed           caller saw success
+     4. seq 4   cancel_order#1                                 actual: executed           caller saw success
+
+FAULTED run  outcome=fail  invariants=5/6  agent=completed  classification=silent_failure
+  agent says: Order cancelled and refunded.
+  fingerprint 6ed590743c1c0145
+  trace (completion order; seq = start order):
+     1. seq 1   refund_payment#1                               actual: executed           caller saw success
+     2. seq 2   send_confirmation#1                            actual: executed           caller saw success
+     3. seq 3   restore_inventory#1                            actual: executed           caller saw success
+     4. seq 4   cancel_order#1                                 actual: executed           caller saw success
+
+Invariants (baseline -> faulted)
+    order_cancelled          PASS  -> PASS 
+    exactly_one_refund       PASS  -> PASS 
+    refund_amount_correct    PASS  -> PASS 
+    inventory_restored       PASS  -> PASS 
+    single_confirmation      PASS  -> PASS 
+    refund_after_cancellation FAIL  -> FAIL 
+
+Faulted-run invariant evidence
+  refund_after_cancellation: A refund was requested before the order's cancellation had completed.
+    expected 0  observed 1
+    evidence {"cancel_completed_at": [4], "cancel_invocations": ["cancel_order#1"], "refund_invocations": ["refund_payment#1"], "refund_started_after_completions": [0], "refunds_before_cancellation": ["refund_payment#1"]}
+
+State differences (baseline vs faulted final state)
+  none

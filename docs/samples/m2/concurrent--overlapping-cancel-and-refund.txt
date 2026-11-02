@@ -1,0 +1,42 @@
+RIFT experiment  concurrent--overlapping-cancel-and-refund
+  scenario  commerce.cancel_order v2
+  agent     concurrent vsample
+  seed      0
+  faults    cancel_order-latency (latency on cancel_order #1), refund_payment-latency (latency on refund_payment #1)
+
+VERDICT: DEGRADED
+  Faults were injected and the faulted run ended fail; invariants not satisfied: refund_after_cancellation. The agent nevertheless reported success.
+
+BASELINE run  outcome=pass  invariants=6/6  agent=completed  classification=correct
+  agent says: All done.
+  fingerprint 1722fdfa49e8897f
+  trace (completion order; seq = start order):
+     1. seq 1   cancel_order#1                                 actual: executed           caller saw success
+     2. seq 2   refund_payment#1                               actual: executed           caller saw success
+     3. seq 3   restore_inventory#1                            actual: executed           caller saw success
+     4. seq 4   send_confirmation#1                            actual: executed           caller saw success
+
+FAULTED run  outcome=fail  invariants=5/6  agent=completed  classification=silent_failure
+  agent says: All done.
+  fingerprint bff81fd3be612f3f
+  trace (completion order; seq = start order):
+     1. seq 1   cancel_order#1         [latency]               actual: executed           caller saw success
+     2. seq 2   refund_payment#1       [latency]               actual: executed           caller saw success
+     3. seq 3   restore_inventory#1                            actual: executed           caller saw success
+     4. seq 4   send_confirmation#1                            actual: executed           caller saw success
+
+Invariants (baseline -> faulted)
+    order_cancelled          PASS  -> PASS 
+    exactly_one_refund       PASS  -> PASS 
+    refund_amount_correct    PASS  -> PASS 
+    inventory_restored       PASS  -> PASS 
+    single_confirmation      PASS  -> PASS 
+  ! refund_after_cancellation PASS  -> FAIL 
+
+Faulted-run invariant evidence
+  refund_after_cancellation: A refund was requested before the order's cancellation had completed.
+    expected 0  observed 1
+    evidence {"cancel_completed_at": [1], "cancel_invocations": ["cancel_order#1"], "refund_invocations": ["refund_payment#1"], "refund_started_after_completions": [0], "refunds_before_cancellation": ["refund_payment#1"]}
+
+State differences (baseline vs faulted final state)
+  none

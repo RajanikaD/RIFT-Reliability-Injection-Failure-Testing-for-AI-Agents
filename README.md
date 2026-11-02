@@ -72,11 +72,11 @@ uv run rift run --agent retrying --fault refund-timeout-after-commit
 VERDICT: DEGRADED
   Faults were injected and the faulted run ended fail; invariants not satisfied: exactly_one_refund, refund_amount_correct. The agent nevertheless reported success.
 ...
-FAULTED run  outcome=fail  invariants=3/5  agent=completed  classification=silent_failure
-  trace:
-     1. cancel_order#1                                 actual: executed           caller saw success
-     2. refund_payment#1       [timeout_after_commit]  actual: executed           caller saw error
-     3. refund_payment#2                               actual: executed           caller saw success
+FAULTED run  outcome=fail  invariants=4/6  agent=completed  classification=silent_failure
+  trace (completion order; seq = start order):
+     1. seq 1   cancel_order#1                                 actual: executed           caller saw success
+     2. seq 2   refund_payment#1       [timeout_after_commit]  actual: executed           caller saw error
+     3. seq 3   refund_payment#2                               actual: executed           caller saw success
 ...
 State differences (baseline vs faulted final state)
   + refunds[1] = {"amount": "79.99", "idempotency_key": null, "payment_id": "PAY-1001", ...}
@@ -95,11 +95,12 @@ Other commands: `rift list` (agents and fault cases), `rift run --json report.js
 | Agent adapter contract and tool gateway that hides fault provenance from agents | Implemented |
 | `ScriptedAgentAdapter` with retry, validation and state reconciliation | Implemented |
 | Deterministic commerce sandbox with request idempotency | Implemented |
-| Invariant engine and five commerce invariants | Implemented |
-| Experiment runner: reset → baseline → faulted → evaluate → compare | Implemented |
+| Invariant engine; five state invariants plus a trace-aware ordering invariant (refund only after cancellation) | Implemented |
+| Experiment runner: reset → baseline → faulted → evaluate → compare; starting state verified against a checked-in fixture | Implemented |
 | Agent-claim vs. actual-state classification; invalid-baseline and unfired-fault detection | Implemented |
-| CLI with text and JSON reports; reproducibility fingerprints | Implemented |
-| CI workflow (ruff, format, strict mypy, pytest, demo smoke test) | Added, not yet run on GitHub |
+| CLI with text and JSON reports; reproducibility fingerprints; run-global invocation sequence and happens-before evidence | Implemented |
+| Run outcome validated against invariant results in `rift_core` | Implemented |
+| CI workflow: lint, format, strict mypy, tests, demo, build on 3.11 and 3.12; Docker build, non-root, `/health`, CLI | Written; steps replayed locally on 3.12; **not yet run on GitHub** |
 | API | `GET /health` only |
 | Seeded probabilistic faults, multi-seed runs | Planned (seed recorded, not consumed) |
 | Persistence, experiment API, web dashboard | Planned (V2) |
@@ -150,8 +151,10 @@ The API health endpoint: `uv run uvicorn rift_api.main:app --reload`, then
 `http://127.0.0.1:8000/health`. Copy `.env.example` to `.env` only for local overrides; `.env` is
 ignored by Git.
 
-Build and run the API container from the repository root (not verified in Milestone 1; see
-the [closeout report](docs/milestone-1-closeout.md)):
+Build and run the API container from the repository root. The image installs strictly from
+`uv.lock` and runs as an unprivileged user. Its build has not been run locally (no Docker engine
+was available); the CI `docker` job builds and smoke-tests it. See
+[Milestone 2](docs/milestone-2-evidence-hardening.md).
 
 ```bash
 docker build -f apps/api/Dockerfile -t rift-api .
@@ -162,6 +165,7 @@ docker run --rm -p 8000:8000 rift-api
 
 - [Implementation audit and backlog](docs/implementation-audit.md)
 - [Progress log](docs/progress-log.md)
+- [Milestone 1 closeout](docs/milestone-1-closeout.md) · [Milestone 2: evidence hardening](docs/milestone-2-evidence-hardening.md) · [Commit plan](docs/commit-plan.md)
 - [Product definition](docs/product.md) · [Roadmap](docs/roadmap.md)
 - [Architecture](docs/architecture.md) · [Domain model](docs/domain-model.md)
 - [Fault execution](docs/fault-execution.md) · [Experiment runner](docs/experiment-runner.md)

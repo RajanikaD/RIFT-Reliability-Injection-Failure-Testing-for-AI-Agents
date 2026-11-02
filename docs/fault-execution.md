@@ -78,7 +78,13 @@ refund_payment  -> 2
 get_order       -> 2
 ```
 
-A separate run starts each tool at invocation one, even when the same executor instance handles both contexts. Invocation identifiers are derived deterministically from the run ID, tool name, and invocation number.
+A separate run starts each tool at invocation one, even when the same executor instance handles both contexts.
+
+Each invocation also receives a run-global `sequence_number` when it **starts**, and records
+`completed_before_start`, the number of the run's invocations that had finished at that moment.
+The recorder lists invocations in **completion** order. For sequential callers the two orders
+agree; for overlapping calls they can differ, and `completed_before_start` is what establishes
+whether one call finished before another began. Invocation identifiers are derived deterministically from the run ID, tool name, and invocation number.
 
 ## Timing abstractions
 
