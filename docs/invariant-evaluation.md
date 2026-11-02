@@ -74,6 +74,13 @@ The commerce example defines five checks in stable order:
 prevents duplicate refunds from passing an amount check through an accidental aggregation rule.
 `inventory_restored` compares before and after quantities and requires a delta of exactly one.
 
+The bound scenario (`commerce_demo.ordering.commerce_scenario_invariants`, scenario version 2)
+adds a sixth, trace-aware check, `refund_after_cancellation`. A final state records what exists,
+not when it came to exist, so ordering can only be judged from trace evidence. The runner supplies
+that evidence in `InvariantEvaluationContext.evidence`; the invariant opts in, uses what actually
+executed rather than what the caller saw, and raises (becoming `ERROR`) if evidence is missing.
+See [ADR-006](adr/ADR-006-evidence-hardening.md).
+
 ## Why there is no LLM judge
 
 This milestone evaluates typed, observable conditions. An LLM judge would add non-determinism and

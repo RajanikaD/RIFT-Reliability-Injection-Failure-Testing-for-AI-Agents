@@ -104,6 +104,9 @@ Conceptual fields:
 - Applied fault-rule identity, type, and phase, if any.
 - Explicit underlying execution and commit state; commit is `None` when unknown.
 - Underlying execution count: 0 when skipped, 1 normally, 2 for `DUPLICATE_REQUEST`.
+- Optional run-global `sequence_number` (start order across tools) and `completed_before_start`
+  (completed invocations when this one started), which together express happens-before
+  ([ADR-006](adr/ADR-006-evidence-hardening.md)). Sequence numbers are unique within a run result.
 - Underlying result or error, separately from the caller-visible response or error.
 
 The record distinguishes the underlying operation's outcome from what the caller observed. Validation enforces the two timeout cases: before-call timeouts cannot execute or commit, while after-commit timeouts require both execution and commit plus a caller-visible error. Records produced by the fault executor are available through a typed success envelope, injected exceptions, and an invocation recorder.
@@ -178,7 +181,7 @@ Conceptual fields:
 - Collection of `InvariantResult` values.
 - Optional state snapshot and ordered tool-invocation evidence.
 
-Invocation and snapshot run identities must match the execution context. An agent completing without an exception does not imply `PASS`; required invariants determine the outcome. `INCONCLUSIVE` covers cases where a valid assessment is unavailable without incorrectly converting uncertainty to success.
+Invocation and snapshot run identities must match the execution context. An agent completing without an exception does not imply `PASS`; required invariants determine the outcome. The model enforces this: `outcome` must equal `derive_run_outcome(invariant_results)`, and with no results only `INCONCLUSIVE` or `ERROR` are accepted. `INCONCLUSIVE` covers cases where a valid assessment is unavailable without incorrectly converting uncertainty to success.
 
 ## Baseline comparison
 

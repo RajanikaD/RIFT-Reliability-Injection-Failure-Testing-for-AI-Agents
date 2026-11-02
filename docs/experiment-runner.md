@@ -3,14 +3,15 @@
 ## Lifecycle
 
 ```text
-validate experiment ↔ binding (scenario id/version, invariant ids, tool names)
+validate experiment ↔ binding (id/version, invariant ids, tool names, then full equality)
 for mode in (baseline, faulted):
-    new environment → reset → snapshot "before" (checked against declared initial_state)
+    new environment → reset → snapshot "before" (checked against the experiment's declared
+                                                  initial_state, loaded from a checked-in fixture)
     new FaultInjectingToolExecutor(experiment rules) + recorder      # rules never match baseline
     ExecutorToolGateway(executor, scenario tool handlers, run context, call budget)
     adapter.run(task, gateway)          # crash → AgentStatus.CRASHED, run continues
-    snapshot "after" → InvariantEvaluator(before, after)
-    derive_outcome → classify(outcome, agent claim) → fingerprint
+    snapshot "after" → InvariantEvaluator(before, after, evidence=invocation_evidence(trace))
+    derive_run_outcome (enforced by ExperimentRunResult) → classify → fingerprint
 assert baseline.initial_state == faulted.initial_state
 compare(baseline, faulted, rules) → verdict
 ```
@@ -55,6 +56,14 @@ status. Two runs with the same inputs must have the same fingerprint; tests enfo
 The **state diff** compares baseline and faulted *final* states structurally and reports added,
 removed and changed values (for example `+ refunds[1] = {...}` for a duplicate refund).
 
+## Trace evidence and ordering
+
+`invocation_evidence` gives invariants each invocation's tool, number, `sequence_number` (start
+order), `completion_position`, `completed_before_start`, and whether it executed and succeeded.
+"A happened-before B" means A's `completion_position` ≤ B's `completed_before_start`. The commerce
+`refund_after_cancellation` invariant uses this, so a refund requested while the cancellation is
+still in flight fails even if it completes second.
+
 ## Determinism and the seed
 
 Fault selection is deterministic because rules target an explicit `(tool_name, invocation_number)`
@@ -69,3 +78,7 @@ order-independent selection (hash of `seed, rule, tool, invocation`) for multi-s
 - Reports are not persisted beyond the optional `--json` file.
 - `LATENCY` faults really sleep unless a `Sleeper` is injected (tests inject a no-op).
 - Only the commerce scenario is registered in the CLI.
+- Happens-before evidence comes from in-process counters in one executor; it is not a distributed
+  clock.
+- Scenarios that declare an empty `initial_state` skip the starting-state check (kept for
+  lightweight test scenarios); the commerce scenario always declares one.

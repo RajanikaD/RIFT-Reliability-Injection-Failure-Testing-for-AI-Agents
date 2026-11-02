@@ -179,3 +179,19 @@ Priority reflects dependency order and value to the product's core claim. Status
 New findings from the closeout: M1-D3 (circular fixture declaration) and M1-D4 (no ordering
 invariant). M1-D4 was demonstrated with a scripted agent that refunds, confirms and restores
 before cancelling; its baseline outcome is `pass`.
+
+## 10. Status after Milestone 2 (2026-11-01)
+
+Details and before/after evidence: [milestone-2-evidence-hardening.md](milestone-2-evidence-hardening.md).
+
+| Defect | Status | Evidence (local unless stated) |
+| --- | --- | --- |
+| M1-D3 Circular starting-state check | Fixed, verified | `tests/test_starting_state.py`: 3 tests failed before the fix ("DID NOT RAISE", missing fixture) and pass after |
+| M1-D4 No ordering invariant | Fixed, verified | `tests/test_ordering_invariant.py`: the refund-first agent passed before and fails now; independent oracle rule R6 agrees in all 80 runs |
+| M1-D1 Outcome caller-settable | Fixed, verified | `tests/test_run_result_validation.py`: core accepted `PASS` with a failing invariant before; rejects it now |
+| M1-D2 No run-global sequence | Fixed, verified | `tests/test_invocation_sequencing.py`: overlapping-call ordering violation passed before and fails now |
+| M1-D7 Dockerfile unpinned and root | Fixed; **image build unverified** | `tests/test_dockerfile.py` (static policy; flags all four defects in the old file); `uv sync --locked` steps replayed in a clean directory; real build runs only in the CI `docker` job |
+| M1-D5 Executor exception leaks commit status | Open (not in Milestone 2 scope) | Gateway still mitigates |
+| M1-D6 Throwaway environment in `_validate` | Open (not in Milestone 2 scope) | — |
+| CI on 3.11 / 3.12 | Workflow written; `check` steps replayed locally on **3.12 (Windows)** only | GitHub run requires a push |
+| Python 3.11 runtime | **Unverified** | Not installed locally |

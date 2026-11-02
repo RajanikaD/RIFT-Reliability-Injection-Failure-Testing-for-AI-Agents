@@ -45,6 +45,37 @@ Concise, verified record of each milestone. "Verified" means the listed command 
 - **Found:** M1-D1 to M1-D7 (see closeout §4). The reconciling strategy misattributes concurrent
   writes; a test pins this as a documented limitation.
 
+## 2026-11-01 — Milestone 2: evidence hardening
+
+Each defect was first reproduced by a failing test, then fixed. Snapshots of the tree after each
+step back the [commit plan](commit-plan.md).
+
+| Step | Failing first | Fix | Verified |
+| --- | --- | --- | --- |
+| D3 | drifted fixture and mismatched spec both ran ("DID NOT RAISE") | checked-in `fixtures/initial_state.json`; runner checks the experiment's declaration and full scenario equality | 4 tests; full suite 180 passed |
+| D4 | refund-first agent's baseline was `pass` | trace evidence passed to invariants; `refund_after_cancellation`; scenario v2 | 5 tests; oracle R6; 185 passed |
+| D1 | core accepted `PASS` with a failing invariant | `derive_run_outcome` in core; `ExperimentRunResult` validates | 10 tests; 195 passed |
+| D2 | overlapping cancel/refund judged correctly ordered | `sequence_number`, `completed_before_start`; happens-before ordering | 4 tests; 199 passed |
+| D7 | old Dockerfile: 4 policy violations | `uv sync --locked`, non-editable, UID 10001, healthcheck; CI docker job | 2 static tests; locked sync replayed in clean dir |
+
+- **Verified locally:** 201 passed; ruff, format and strict mypy clean (37 files); every CI `check`
+  step replayed in a clean copy on Python 3.12 (Windows); wheel contains the fixture.
+- **Not verified:** GitHub Actions (needs a push), Python 3.11, the Docker image build and the CI
+  `docker` job (no engine).
+
+## 2026-11-01 — Integration preparation (no commits yet)
+
+- **Changed:** the commit plan moves the ordering invariant's message and evidence change from
+  the docs commit into the D2 commit. Machine-specific paths were generalized in the audit,
+  closeout and plan. `.mypy_cache/` was added to `.gitignore`. Commit messages state provenance;
+  commit 1 carries no Claude trailer.
+- **Verified locally:** the integration script was rehearsed in a scratch repository. All 8
+  commits pass the full gate (80 → 201 tests), and the working tree after commit 8 is clean.
+  None of the 113 introduced blobs contain secrets, artifacts or machine paths. Push credentials
+  and `safe.directory` propagation were checked with `git push --dry-run` (nothing created).
+- **Pending approval:** creating the commits, pushing `feature/evidence-hardening`, and opening a
+  draft PR (required for CI to run).
+
 ## Backlog status
 
 | ID | Item | Status |
@@ -56,7 +87,7 @@ Concise, verified record of each milestone. "Verified" means the listed command 
 | B5 | E2E proofs (recovery, failed recovery, partial, after-commit, idempotency, duplicates, reproducibility) | Done |
 | B6 | `DUPLICATE_REQUEST` fault | Done |
 | B7 | Stale docs, README implemented-vs-planned | Done |
-| B8 | CI and mypy | mypy verified; CI workflow unverified |
+| B8 | CI and mypy | mypy verified; CI steps replayed locally on 3.12; GitHub run pending |
 | B9 | Boundary test for every package | Done |
 | B10 | Seeded probabilistic rules, multi-seed runs | After Milestone 2 |
 | B11 | Experiment JSON files via CLI | Done (`--spec`) |
@@ -65,9 +96,11 @@ Concise, verified record of each milestone. "Verified" means the listed command 
 | B14 | Web dashboard | Open (after B13) |
 | B15 | Real framework adapter (optional extra) | Open |
 | B16 | Evidence export bundle | Partly (`--json` report) |
-| M2-1 | Commit (with approval), push branch, CI green on 3.11/3.12 | Next — needs approval |
-| M2-2 | Docker build verified; lock-based install; non-root user (M1-D7) | Next |
-| M2-3 | Validate outcome against invariant results in `rift_core` (M1-D1) | Next |
-| M2-4 | Checked-in commerce initial-state fixture (M1-D3) | Next |
-| M2-5 | Run-global invocation `sequence_number` (M1-D2) | Next |
-| M2-6 | Trace-aware ordering invariant (M1-D4) | Next |
+| M2-1 | Commit (with approval), push branch, CI green on 3.11/3.12 | Rehearsed; awaiting approval to commit, push and open a draft PR |
+| M2-2 | Docker build verified; lock-based install; non-root user (M1-D7) | Lock/non-root done; image build pending a Docker engine or CI |
+| M2-3 | Validate outcome against invariant results in `rift_core` (M1-D1) | Done, verified |
+| M2-4 | Checked-in commerce initial-state fixture (M1-D3) | Done, verified |
+| M2-5 | Run-global invocation `sequence_number` (M1-D2) | Done, verified (plus `completed_before_start`, see ADR-006) |
+| M2-6 | Trace-aware ordering invariant (M1-D4) | Done, verified |
+| M3-1 | M1-D5: stop exposing commit status on executor exceptions to direct callers | Open |
+| M3-2 | M1-D6: validate tool bindings without building an environment | Open |
