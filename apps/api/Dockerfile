@@ -7,8 +7,11 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY apps/api/src ./apps/api/src
+COPY apps/cli/src ./apps/cli/src
 COPY examples/commerce_demo/src ./examples/commerce_demo/src
+COPY packages/rift_agent_adapters/src ./packages/rift_agent_adapters/src
 COPY packages/rift_core/src ./packages/rift_core/src
+COPY packages/rift_experiment_runner/src ./packages/rift_experiment_runner/src
 COPY packages/rift_fault_engine/src ./packages/rift_fault_engine/src
 COPY packages/rift_invariant_engine/src ./packages/rift_invariant_engine/src
 

@@ -401,3 +401,52 @@ def test_ambiguous_timeout_retry_demonstrates_duplicate_side_effects() -> None:
     assert state["charges"] == 2
     assert executor.invocations[0].underlying_operation_committed is True
     assert executor.invocations[1].fault_type is None
+
+
+def test_duplicate_request_executes_twice_and_shows_the_first_result() -> None:
+    calls: list[int] = []
+
+    async def operation() -> JsonValue:
+        calls.append(len(calls) + 1)
+        return {"delivery": len(calls)}
+
+    execution = execute(FaultInjectingToolExecutor([rule(FaultType.DUPLICATE_REQUEST)]), operation)
+
+    assert calls == [1, 2]
+    assert execution.result == {"delivery": 1}
+    invocation = execution.invocation
+    assert invocation.underlying_execution_count == 2
+    assert invocation.underlying_result == [{"delivery": 1}, {"delivery": 2}]
+    assert invocation.caller_error is None
+
+
+def test_duplicate_request_keeps_evidence_when_the_second_delivery_fails() -> None:
+    calls: list[int] = []
+
+    async def operation() -> JsonValue:
+        calls.append(1)
+        if len(calls) == 2:
+            raise DependencyFailure("already processed")
+        return "ok"
+
+    execution = execute(FaultInjectingToolExecutor([rule(FaultType.DUPLICATE_REQUEST)]), operation)
+
+    assert execution.result == "ok"
+    assert execution.invocation.underlying_result == [
+        "ok",
+        {"error": "DependencyFailure: already processed"},
+    ]
+
+
+def test_execution_count_defaults_from_execution_evidence() -> None:
+    executor = DirectToolExecutor()
+
+    async def operation() -> JsonValue:
+        return 1
+
+    assert execute(executor, operation).invocation.underlying_execution_count == 1
+
+    faulted = FaultInjectingToolExecutor([rule(FaultType.EXCEPTION)])
+    with pytest.raises(InjectedToolException) as raised:
+        execute(faulted, operation)
+    assert raised.value.invocation.underlying_execution_count == 0
