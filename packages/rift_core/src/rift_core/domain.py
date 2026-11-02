@@ -315,10 +315,12 @@ class InvariantResult(RiftDomainModel):
     """The evidence-bearing result of evaluating one invariant."""
 
     invariant_id: NonEmptyStr
+    description: NonEmptyStr
     status: InvariantStatus
     message: NonEmptyStr
     expected: JsonValue | None = None
     observed: JsonValue | None = None
+    evidence: dict[str, JsonValue] = Field(default_factory=dict)
     error: NonEmptyStr | None = None
 
     @model_validator(mode="after")

@@ -24,18 +24,21 @@ The scaffold provides:
 - Framework-agnostic experiment, scenario, fault-rule, and run-evidence models.
 - Deterministic direct and fault-injecting async tool executors.
 - A deterministic synthetic ecommerce sandbox with explicit idempotency behavior.
+- A deterministic invariant engine with reusable typed checks and structured evidence.
 - Environment-backed API configuration.
 - `GET /health` in FastAPI.
 - pytest and Ruff configuration.
 - A minimal API Dockerfile.
 
-Experiment orchestration, agent adapters, invariant evaluation, persistence, and web functionality are not implemented.
+Experiment orchestration, agent adapters, persistence, and web functionality are not implemented.
 
 The sandbox supports the state and operations needed by a later orchestrated ecommerce demo:
 
 > Cancel order ORD-1001, refund the customer, restore inventory, and send confirmation.
 
-The future orchestrated demo will compare a fault-free baseline with faulted executions and independently verify the resulting system state. The agent, orchestration, and invariant evaluation are not implemented.
+The future orchestrated demo will compare a fault-free baseline with faulted executions. The
+commerce invariant set can already independently verify final state; agent execution and
+orchestration are not implemented.
 
 ## Backend setup
 
@@ -96,12 +99,15 @@ See [the architecture](docs/architecture.md), [domain model](docs/domain-model.m
 - [Domain model](docs/domain-model.md)
 - [Fault execution](docs/fault-execution.md)
 - [Commerce sandbox](docs/commerce-sandbox.md)
+- [Invariant evaluation](docs/invariant-evaluation.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture decision records](docs/adr/)
 
 ## Project status
 
-Repository scaffold complete. The API health check is implemented; all reliability-testing behavior remains deferred.
+The project currently includes the framework-neutral domain model, deterministic fault execution,
+the synthetic commerce sandbox, outcome invariant evaluation, and the API health check. Experiment
+orchestration and agent adapters remain deferred.
 
 ## Clean-room development
 

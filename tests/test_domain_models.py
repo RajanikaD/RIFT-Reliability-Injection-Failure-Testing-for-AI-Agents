@@ -230,10 +230,12 @@ def test_run_result_serialization_round_trip() -> None:
         invariant_results=(
             InvariantResult(
                 invariant_id="resource-updated",
+                description="The resource must be updated.",
                 status=InvariantStatus.PASS,
                 message="Resource is updated.",
                 expected="updated",
                 observed="updated",
+                evidence={"resource_id": "resource-1"},
             ),
         ),
     )

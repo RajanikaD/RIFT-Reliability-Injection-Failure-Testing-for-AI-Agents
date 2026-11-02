@@ -28,6 +28,7 @@ packages = [
     "examples/commerce_demo/src/commerce_demo",
     "packages/rift_core/src/rift_core",
     "packages/rift_fault_engine/src/rift_fault_engine",
+    "packages/rift_invariant_engine/src/rift_invariant_engine",
 ]
 
 [tool.pytest.ini_options]
@@ -42,6 +43,7 @@ src = [
     "examples/commerce_demo/src",
     "packages/rift_core/src",
     "packages/rift_fault_engine/src",
+    "packages/rift_invariant_engine/src",
     "tests",
 ]
 

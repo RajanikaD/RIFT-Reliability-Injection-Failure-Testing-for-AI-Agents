@@ -155,13 +155,15 @@ The result of evaluating one invariant for one run.
 Conceptual fields:
 
 - Invariant identity and version.
+- Human-readable invariant description.
 - Status: `PASS`, `FAIL`, or `ERROR`.
 - Concise reason.
 - Structured expected and observed values where applicable.
-- Evidence references into the snapshot or invocation trace.
+- JSON-safe structured evidence selected from the snapshot or invocation trace.
 - Evaluator error details when status is `ERROR`.
 
 `ERROR` means the invariant could not be evaluated and must not be treated as a pass.
+Exact decimal values are serialized as strings in invariant results to preserve their value.
 
 ## `ExperimentRunResult`
 

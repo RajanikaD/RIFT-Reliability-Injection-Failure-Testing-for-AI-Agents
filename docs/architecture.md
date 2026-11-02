@@ -70,7 +70,7 @@ Provides an isolated, resettable environment for a scenario. It owns test-domain
 
 ### `invariant_engine`
 
-Evaluates declared `Invariant` objects against a `StateSnapshot` and run evidence. It emits structured `InvariantResult` values with status and evidence. It does not use an agent's final text as proof that an external operation succeeded.
+Evaluates declared `Invariant` objects against typed before/after state and permitted run evidence. It emits structured `InvariantResult` values with status and evidence. It does not use an agent's final text as proof that an external operation succeeded. The generic engine does not import scenario models; scenario packages compose typed selectors and definitions on top of it.
 
 ### `persistence`
 
@@ -93,6 +93,10 @@ Provides the Next.js and TypeScript interface for defining experiments and inspe
 5. `api` depends on application services exposed by the runner and persistence boundaries.
 6. `web` depends on the HTTP contract only.
 7. Provider-specific SDK types do not cross the adapter boundary.
+
+Scenario-specific invariant definitions are composition code rather than generic engine code. They
+may depend on both their scenario state model and `rift_invariant_engine`; the engine never depends
+on those definitions.
 
 ## Conceptual execution flow
 
@@ -173,4 +177,3 @@ Temporal must coordinate the existing application operations rather than move fa
 ## Security considerations
 
 The initial system targets synthetic local environments, not production systems. Future integrations must treat tool inputs, outputs, traces, and snapshots as potentially sensitive. Provider credentials belong in runtime secret storage, never experiment definitions, logs, fixtures, or source control. Executing untrusted agent code is outside the initial sandbox's security guarantees.
-
