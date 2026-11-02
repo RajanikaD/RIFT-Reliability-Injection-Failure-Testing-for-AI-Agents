@@ -1,0 +1,16 @@
+{
+  "orders": [
+    {
+      "order_id": "ORD-1001",
+      "status": "confirmed",
+      "items": [{"sku": "SKU-HEADPHONES-001", "quantity": 1, "unit_price": "79.99"}],
+      "total": "79.99"
+    }
+  ],
+  "payments": [
+    {"payment_id": "PAY-1001", "order_id": "ORD-1001", "status": "captured", "amount": "79.99"}
+  ],
+  "refunds": [],
+  "inventory": [{"sku": "SKU-HEADPHONES-001", "available_quantity": 9}],
+  "notifications": []
+}

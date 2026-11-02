@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
+from importlib import resources
 
 from pydantic import JsonValue
 
@@ -40,9 +42,22 @@ class CommerceEnvironment:
         return TOOL_SPECS
 
 
-def _initial_state() -> dict[str, JsonValue]:
-    environment = CommerceEnvironment()
-    return environment.snapshot_json(environment.snapshot())
+def _declared_initial_state() -> dict[str, JsonValue]:
+    """Load the reviewed starting-state contract from a checked-in fixture.
+
+    This must not be derived from the sandbox: the runner verifies the sandbox's reset state
+    *against* this declaration, and a declaration computed from the thing it checks cannot fail.
+    The fixture is schema-validated so a malformed edit fails at import, not mid-experiment.
+    """
+
+    text = (
+        resources.files("commerce_demo")
+        .joinpath("fixtures/initial_state.json")
+        .read_text(encoding="utf-8")
+    )
+    CommerceSnapshot.model_validate_json(text)
+    state: dict[str, JsonValue] = json.loads(text)
+    return state
 
 
 COMMERCE_SCENARIO = ScenarioSpec(
@@ -50,7 +65,7 @@ COMMERCE_SCENARIO = ScenarioSpec(
     name="Cancel and refund an ecommerce order",
     task=TASK,
     version=1,
-    initial_state=_initial_state(),
+    initial_state=_declared_initial_state(),
     tool_names=tuple(spec.name for spec in TOOL_SPECS),
     invariant_ids=tuple(invariant.name for invariant in commerce_cancellation_invariants()),
 )
