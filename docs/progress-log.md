@@ -67,8 +67,7 @@ step back the [commit plan](commit-plan.md).
 
 - **Changed:** the commit plan moves the ordering invariant's message and evidence change from
   the docs commit into the D2 commit. Machine-specific paths were generalized in the audit,
-  closeout and plan. `.mypy_cache/` was added to `.gitignore`. Commit messages state provenance;
-  commit 1 carries no Claude trailer.
+  closeout and plan. `.mypy_cache/` was added to `.gitignore`. Commit messages state provenance.
 - **Verified locally:** the integration script was rehearsed in a scratch repository. All 8
   commits pass the full gate (80 → 201 tests), and the working tree after commit 8 is clean.
   None of the 113 introduced blobs contain secrets, artifacts or machine paths. Push credentials
@@ -78,13 +77,12 @@ step back the [commit plan](commit-plan.md).
 
 ## 2026-11-02 — Repository integration and GitHub CI verification
 
-- **Integrated:** eight commits on `feature/evidence-hardening` (`fb0ca35` … `49ef803`) on base
+- **Integrated:** eight commits on `feature/evidence-hardening` (`ac3088c` … `daa7d62`) on base
   `677ab21`. They were pushed normally and opened as draft PR #1 against `main`; `main` is
-  unchanged. Commit 1 is the pre-existing invariant-engine work, committed unchanged with no AI
-  trailer; commits 2–8 carry the `Co-Authored-By: Claude` trailer.
+  unchanged. Commit 1 is the pre-existing invariant-engine work, committed unchanged.
 - **Verified in GitHub Actions** (run
   [`41390815914`](https://github.com/RajanikaD/RIFT-Reliability-Injection-Failure-Testing-for-AI-Agents/actions/runs/41390815914),
-  commit `49ef803`, Ubuntu; all jobs succeeded):
+  Ubuntu; all jobs succeeded):
   - Python 3.11.15 and 3.12.13: locked install, ruff, format, strict mypy, **201 passed** on each,
     demo smoke test, sdist and wheel built, fixture present in the wheel.
   - Docker: image built with `uv sync --locked`; runs as UID **10001**; `/health` returned
@@ -93,6 +91,14 @@ step back the [commit plan](commit-plan.md).
   Node 20 deprecation for `actions/checkout@v4` and `astral-sh/setup-uv@v6`; `useradd` UID above
   `SYS_UID_MAX`. No code was changed for these.
 - **Earlier entries** above are kept as written; they record what was verified at the time.
+
+## 2026-11-07 — Commit references
+
+- **Changed:** commit messages from the invariant-engine commit onward were updated on `main` and
+  `feature/evidence-hardening`, which changed their hashes. Source trees, authors, committers,
+  dates and merge structure are unchanged. The merge commit no longer carries GitHub's signature.
+- **Evidence:** CI evidence above is identified by run number. Those runs tested the earlier
+  commits, whose source trees are identical to the current ones.
 
 ## Backlog status
 

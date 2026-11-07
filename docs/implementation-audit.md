@@ -201,7 +201,7 @@ Details and before/after evidence: [milestone-2-evidence-hardening.md](milestone
 §9 and §10 record what was verified at the time and are left unchanged. This section records
 what GitHub Actions run
 [`41390815914`](https://github.com/RajanikaD/RIFT-Reliability-Injection-Failure-Testing-for-AI-Agents/actions/runs/41390815914)
-verified. It ran on PR #1 (`pull_request` event) at commit `49ef803` on Ubuntu, and all three jobs
+verified. It ran on PR #1 (`pull_request` event) on Ubuntu, and all three jobs
 succeeded.
 
 | Item | Previous status | Status now | Evidence in run `41390815914` |
