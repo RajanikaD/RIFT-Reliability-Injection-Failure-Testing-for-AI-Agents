@@ -42,12 +42,9 @@ writing).
 
 - **All commits** are authored as the repository's configured identity, matching the existing
   history.
-- **Commit 1** has no Claude trailer. Its body states that the work predates the Claude Code
-  session and is committed unchanged. The local environment suggests the earlier work may have
-  involved another AI tool: the inherited virtual environment was created by a Codex runtime. That
-  is not established, so no trailer is asserted; the author can add one if accurate.
-- **Commits 2–8** end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Commit 2's
-  body lists its few non-additive edits to commit-1 files.
+- **Commit 1** is the pre-existing invariant-engine work. Its body states that it is committed
+  unchanged.
+- **Commit 2**'s body lists its few non-additive edits to commit-1 files.
 
 ## Hygiene checks on everything that would enter Git
 
